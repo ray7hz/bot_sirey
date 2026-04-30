@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../koneksi.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../telegram/notifikasi_tugas.php';
+// require_once __DIR__ . '/../telegram/notifikasi_tugas.php'; // DEPRECATED - gunakan notifikasi_scheduler.php
 
 // ========== FUNCTIONS ==========
 

@@ -91,6 +91,9 @@ function sirey_getDatabase(): mysqli
         }
 
         mysqli_set_charset($db, $config['charset']);
+        
+        // Set database timezone to match PHP timezone (Asia/Jakarta = +07:00)
+        mysqli_query($db, "SET time_zone = '+07:00'");
     }
 
     sirey_setLastDbError();

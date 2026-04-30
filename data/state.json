@@ -1,1 +1,61 @@
-{"8080931968":{"step":"menu"},"7710776576":{"step":"menu"},"6048830408":{"step":"menu"},"8139576413":{"step":"menu"},"8445211581":{"step":"menu"}}
+{
+    "8080931968": {
+        "step": "menu"
+    },
+    "7710776576": {
+        "step": "menu"
+    },
+    "8139576413": {
+        "step": "menu"
+    },
+    "6048830408": {
+        "step": "menu",
+        "user_cache": {
+            "akun_id": 34,
+            "nama_lengkap": "RAYHAN RIZKY PRATAMA",
+            "role": "siswa",
+            "nis_nip": "10243313"
+        }
+    },
+    "8445211581": {
+        "step": "menu",
+        "user_cache": {
+            "akun_id": 42,
+            "nama_lengkap": "Rd. Irfan Santika Rahman, S Pd., MT.",
+            "role": "guru",
+            "nis_nip": "198408062010011009",
+            "telegram_chat_id": 8445211581,
+            "notif_jadwal": 1,
+            "notif_tugas": 1,
+            "notif_pengumuman": 1,
+            "notif_nilai": 1
+        }
+    },
+    "5021279827": {
+        "step": "menu",
+        "user_cache": {
+            "akun_id": 32,
+            "nama_lengkap": "RAHMA KHOYRUL HAWA",
+            "role": "siswa",
+            "nis_nip": "10243311"
+        }
+    },
+    "1355009630": {
+        "step": "menu",
+        "user_cache": {
+            "akun_id": 35,
+            "nama_lengkap": "REVITA GADIS AMIJAYA",
+            "role": "siswa",
+            "nis_nip": "10243314"
+        }
+    },
+    "6202447439": {
+        "step": "menu",
+        "user_cache": {
+            "akun_id": 34,
+            "nama_lengkap": "RAYHAN RIZKY PRATAMA",
+            "role": "siswa",
+            "nis_nip": "10243313"
+        }
+    }
+}

@@ -170,8 +170,24 @@ function loadStates(): array
     $file_rayhanrp = _stateFile();
     if (!file_exists($file_rayhanrp)) return [];
 
-    $data_rayhanrp = json_decode((string)file_get_contents($file_rayhanrp), true);
-    return is_array($data_rayhanrp) ? $data_rayhanrp : [];
+    // Retry logic untuk handle file locking
+    $retries = 3;
+    $delay = 100000; // 0.1 second
+    
+    for ($i = 0; $i < $retries; $i++) {
+        $content = @file_get_contents($file_rayhanrp);
+        
+        if ($content !== false) {
+            $data_rayhanrp = json_decode($content, true);
+            return is_array($data_rayhanrp) ? $data_rayhanrp : [];
+        }
+        
+        if ($i < $retries - 1) {
+            usleep($delay);
+        }
+    }
+    
+    return [];
 }
 
 function saveStates(array $data_rayhanrp): void
@@ -183,7 +199,23 @@ function saveStates(array $data_rayhanrp): void
         mkdir($direktori_rayhanrp, 0755, true);
     }
 
-    file_put_contents($file_rayhanrp, json_encode($data_rayhanrp), LOCK_EX);
+    // Retry logic untuk handle file locking
+    $retries = 3;
+    $delay = 100000; // 0.1 second
+    
+    for ($i = 0; $i < $retries; $i++) {
+        $result = @file_put_contents($file_rayhanrp, json_encode($data_rayhanrp, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+        
+        if ($result !== false) {
+            return;
+        }
+        
+        if ($i < $retries - 1) {
+            usleep($delay);
+        }
+    }
+    
+    error_log("[STATE] Failed to save states after {$retries} retries");
 }
 
 function getState(int $id_chat_rayhanrp): ?array
