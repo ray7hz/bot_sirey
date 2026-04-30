@@ -19,7 +19,7 @@ function getPendingRevisions(int $guru_id, int $limit = 20): array {
            t.judul AS tugas_judul,
            a_siswa.nama_lengkap AS siswa_nama,
            a_guru.nama_lengkap AS guru_nama
-         FROM pengumpulan_versi_rayhanrp pv
+         FROM pengumpulan_versi_rayhanRP pv
          INNER JOIN pengumpulan_rayhanRP p ON pv.pengumpulan_id = p.pengumpulan_id
          INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id
          INNER JOIN akun_rayhanRP a_siswa ON p.akun_id = a_siswa.akun_id
@@ -36,13 +36,13 @@ function getPendingRevisions(int $guru_id, int $limit = 20): array {
 
 function approveRevision(int $versi_id, int $guru_id, string $catatan_approval = ''): array {
     try {
-        $versi = sirey_fetch(sirey_query('SELECT * FROM pengumpulan_versi_rayhanrp WHERE versi_id = ?', 'i', $versi_id));
+        $versi = sirey_fetch(sirey_query('SELECT * FROM pengumpulan_versi_rayhanRP WHERE versi_id = ?', 'i', $versi_id));
         if (!$versi) return ['success' => false, 'message' => 'Versi tidak ditemukan'];
         
         $pengumpulan_id = (int)$versi['pengumpulan_id'];
         
         $updateVersiResult = sirey_execute(
-            'UPDATE pengumpulan_versi_rayhanrp SET status_approval = "disetujui", disetujui_oleh = ?, catatan_approval = ?, diubah_pada = NOW() WHERE versi_id = ?',
+            'UPDATE pengumpulan_versi_rayhanRP SET status_approval = "disetujui", disetujui_oleh = ?, catatan_approval = ?, diubah_pada = NOW() WHERE versi_id = ?',
             'isi', $guru_id, $catatan_approval, $versi_id
         );
         if ($updateVersiResult <= 0) return ['success' => false, 'message' => 'Gagal menyimpan approval'];
@@ -68,13 +68,13 @@ function rejectRevision(int $versi_id, int $guru_id, string $catatan_rejection =
     try {
         if (empty($catatan_rejection)) return ['success' => false, 'message' => 'Catatan penolakan wajib diisi'];
         
-        $versi = sirey_fetch(sirey_query('SELECT pengumpulan_id FROM pengumpulan_versi_rayhanrp WHERE versi_id = ?', 'i', $versi_id));
+        $versi = sirey_fetch(sirey_query('SELECT pengumpulan_id FROM pengumpulan_versi_rayhanRP WHERE versi_id = ?', 'i', $versi_id));
         if (!$versi) return ['success' => false, 'message' => 'Versi tidak ditemukan'];
         
         $pengumpulan_id = (int)$versi['pengumpulan_id'];
         
         $updateResult = sirey_execute(
-            'UPDATE pengumpulan_versi_rayhanrp SET status_approval = "ditolak", disetujui_oleh = ?, catatan_approval = ?, diubah_pada = NOW() WHERE versi_id = ?',
+            'UPDATE pengumpulan_versi_rayhanRP SET status_approval = "ditolak", disetujui_oleh = ?, catatan_approval = ?, diubah_pada = NOW() WHERE versi_id = ?',
             'isi', $guru_id, $catatan_rejection, $versi_id
         );
         if ($updateResult <= 0) return ['success' => false, 'message' => 'Gagal menyimpan rejection'];
@@ -364,7 +364,7 @@ if (!empty($aksi)) {
         $versi_id = (int)($_POST['versi_id'] ?? 0);
         $catatan = trim((string)($_POST['catatan_approval'] ?? ''));
         if ($versi_id <= 0) { echo json_encode(['success' => false]); exit; }
-        $check = sirey_fetch(sirey_query('SELECT t.pembuat_id FROM pengumpulan_versi_rayhanrp pv INNER JOIN pengumpulan_rayhanRP p ON pv.pengumpulan_id = p.pengumpulan_id INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id WHERE pv.versi_id = ?', 'i', $versi_id));
+        $check = sirey_fetch(sirey_query('SELECT t.pembuat_id FROM pengumpulan_versi_rayhanRP pv INNER JOIN pengumpulan_rayhanRP p ON pv.pengumpulan_id = p.pengumpulan_id INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id WHERE pv.versi_id = ?', 'i', $versi_id));
         if (!$check || (int)$check['pembuat_id'] !== $guru_id) { echo json_encode(['success' => false]); exit; }
         echo json_encode(approveRevision($versi_id, $guru_id, $catatan));
         exit;
@@ -375,7 +375,7 @@ if (!empty($aksi)) {
         $versi_id = (int)($_POST['versi_id'] ?? 0);
         $catatan = trim((string)($_POST['catatan_rejection'] ?? ''));
         if ($versi_id <= 0 || empty($catatan)) { echo json_encode(['success' => false]); exit; }
-        $check = sirey_fetch(sirey_query('SELECT t.pembuat_id FROM pengumpulan_versi_rayhanrp pv INNER JOIN pengumpulan_rayhanRP p ON pv.pengumpulan_id = p.pengumpulan_id INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id WHERE pv.versi_id = ?', 'i', $versi_id));
+        $check = sirey_fetch(sirey_query('SELECT t.pembuat_id FROM pengumpulan_versi_rayhanRP pv INNER JOIN pengumpulan_rayhanRP p ON pv.pengumpulan_id = p.pengumpulan_id INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id WHERE pv.versi_id = ?', 'i', $versi_id));
         if (!$check || (int)$check['pembuat_id'] !== $guru_id) { echo json_encode(['success' => false]); exit; }
         echo json_encode(rejectRevision($versi_id, $guru_id, $catatan));
         exit;
@@ -399,14 +399,19 @@ $where_clause = $role_guru === 'guru' ? 'WHERE t.pembuat_id = ?' : '';
 $where_params = $role_guru === 'guru' ? [$id_guru] : [];
 
 $daftar_tugas = sirey_fetchAll(sirey_query(
-    'SELECT t.tugas_id, t.judul, mp.nama AS matpel_nama, t.tenggat, t.poin_maksimal, t.status,
+    'SELECT t.tugas_id, t.judul, t.tipe_tugas, t.grup_id, mp.nama AS matpel_nama, t.tenggat, t.poin_maksimal, t.status,
             (SELECT COUNT(*) FROM pengumpulan_rayhanRP p WHERE p.tugas_id = t.tugas_id) AS total_kumpul,
             (SELECT COUNT(*) FROM pengumpulan_rayhanRP p WHERE p.tugas_id = t.tugas_id 
              AND NOT EXISTS (SELECT 1 FROM penilaian_rayhanRP pn WHERE pn.pengumpulan_id = p.pengumpulan_id AND pn.nilai IS NOT NULL)) AS belum_dinilai,
             (SELECT COUNT(*) FROM pengumpulan_rayhanRP p WHERE p.tugas_id = t.tugas_id 
              AND EXISTS (SELECT 1 FROM penilaian_rayhanRP pn WHERE pn.pengumpulan_id = p.pengumpulan_id AND pn.nilai IS NOT NULL)) AS sudah_dinilai,
             (SELECT AVG(pn.nilai) FROM pengumpulan_rayhanRP p LEFT JOIN penilaian_rayhanRP pn ON pn.pengumpulan_id = p.pengumpulan_id 
-             WHERE p.tugas_id = t.tugas_id AND pn.nilai IS NOT NULL) AS rata_nilai
+             WHERE p.tugas_id = t.tugas_id AND pn.nilai IS NOT NULL) AS rata_nilai,
+            CASE WHEN t.tipe_tugas = "grup" 
+                 THEN (SELECT COUNT(*) FROM grup_anggota_rayhanRP ga INNER JOIN akun_rayhanRP a ON ga.akun_id = a.akun_id 
+                       WHERE ga.grup_id = t.grup_id AND ga.aktif = 1 AND a.role = "siswa")
+                 ELSE (SELECT COUNT(*) FROM tugas_perorang_rayhanRP WHERE tugas_id = t.tugas_id) 
+            END AS total_siswa
      FROM tugas_rayhanRP t LEFT JOIN mata_pelajaran_rayhanRP mp ON t.matpel_id = mp.matpel_id
      ' . $where_clause . ' ORDER BY t.tenggat DESC',
     empty($where_params) ? '' : 'i', ...$where_params
@@ -480,10 +485,20 @@ $pending_revisions = $role_guru === 'guru' ? getPendingRevisions($id_guru) : [];
           <td><strong><?php echo htmlspecialchars($t['judul']); ?></strong></td>
           <td><?php echo htmlspecialchars($t['matpel_nama'] ?? '—'); ?></td>
           <td><small><?php echo formatDatetime($t['tenggat']); ?></small></td>
-          <td><span style="background:#e0e7ff; color:#3730a3; padding:4px 8px; border-radius:4px; font-size:12px;"><?php echo (int)$t['sudah_dinilai']; ?>/<?php echo (int)$t['total_kumpul']; ?></span></td>
+          <td>
+            <?php $belum_kumpul = (int)$t['total_siswa'] - (int)$t['total_kumpul']; ?>
+            <span style="background:#e0e7ff; color:#3730a3; padding:6px 10px; border-radius:4px; font-size:12px; font-weight:500;">
+              <?php echo (int)$t['total_kumpul']; ?> / <?php echo (int)$t['total_siswa']; ?>
+            </span>
+            <br>
+            <small style="color:#64748b; display:block; margin-top:4px;">
+              ✅ <?php echo (int)$t['total_kumpul']; ?> mengumpulkan
+              <br>❌ <?php echo $belum_kumpul; ?> belum
+            </small>
+          </td>
           <td>
             <div style="background:#e5e7eb; height:20px; border-radius:3px; overflow:hidden;">
-              <?php $pct = $t['total_kumpul'] > 0 ? round(($t['sudah_dinilai'] / $t['total_kumpul']) * 100) : 0; ?>
+              <?php $pct = $t['total_siswa'] > 0 ? round(($t['sudah_dinilai'] / $t['total_siswa']) * 100) : 0; ?>
               <div style="background:#16a34a; height:100%; width:<?php echo $pct; ?>%;"></div>
             </div>
           </td>

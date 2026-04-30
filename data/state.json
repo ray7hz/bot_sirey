@@ -48,14 +48,5 @@
             "role": "siswa",
             "nis_nip": "10243314"
         }
-    },
-    "6202447439": {
-        "step": "menu",
-        "user_cache": {
-            "akun_id": 34,
-            "nama_lengkap": "RAYHAN RIZKY PRATAMA",
-            "role": "siswa",
-            "nis_nip": "10243313"
-        }
     }
 }

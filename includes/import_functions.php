@@ -20,12 +20,11 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 function normalizeExcelHeader(string $value): string
 {
-    // Hapus line breaks, tabs, dan whitespace berlebih
-    $value = preg_replace('/[\r\n\t]+/', ' ', $value);  // Hapus line breaks & tabs
+    $value = preg_replace('/[\r\n\t]+/', ' ', $value);
     $value = strtolower(trim($value));
-    $value = preg_replace('/\s+/', ' ', $value);         // Multiple spaces jadi single space
+    $value = preg_replace('/\s+/', ' ', $value);
     $value = str_replace(['_', '-', '/', '\\'], ' ', $value);
-    $value = preg_replace('/\s+/', ' ', $value);         // Bersihkan lagi setelah replace
+    $value = preg_replace('/\s+/', ' ', $value);
 
     return $value;
 }
@@ -42,10 +41,7 @@ function normalizeJenisKelamin(string $value): ?string
 }
 
 /**
- * Parse XLSX file dan return array of data.
- * Mendukung header:
- * NO | NAMA | NIS | L/P
- * Opsional: KELAS
+ * Parse XLSX file dan mengembalikan array data.
  */
 function parseExcelFile(string $filePath): array
 {
@@ -58,7 +54,6 @@ function parseExcelFile(string $filePath): array
     }
 
     try {
-        // Check if ZipArchive is available (required for xlsx files)
         if (!class_exists('ZipArchive')) {
             return [
                 'error' => '❌ Extension ZipArchive tidak aktif!<br><br>' .
@@ -80,7 +75,6 @@ function parseExcelFile(string $filePath): array
             return ['error' => 'Tidak ada data di sheet'];
         }
 
-        // Cari header row dari 10 baris pertama
         $headerRowIndex = null;
         $headerMap = [];
 
@@ -115,15 +109,12 @@ function parseExcelFile(string $filePath): array
                     continue;
                 }
                 
-                // Exact match
                 if (isset($headerCandidates[$head])) {
                     $headerMap[$headerCandidates[$head]] = $idx;
                     if ($headerCandidates[$head] === 'nama') $hasNama = true;
                     if ($headerCandidates[$head] === 'nis') $hasNis = true;
                     if ($headerCandidates[$head] === 'jenis_kelamin') $hasGender = true;
-                }
-                // Partial match untuk jenis_kelamin (handle "L/P TGL" merged header)
-                elseif (!$hasGender && (strpos($head, 'l p') === 0 || strpos($head, 'lp') === 0 || 
+                } elseif (!$hasGender && (strpos($head, 'l p') === 0 || strpos($head, 'lp') === 0 || 
                         strpos($head, 'jenis') !== false || strpos($head, 'jk') !== false)) {
                     $headerMap['jenis_kelamin'] = $idx;
                     $hasGender = true;
@@ -136,7 +127,6 @@ function parseExcelFile(string $filePath): array
             }
         }
 
-        // Fallback jika header tidak terdeteksi: pakai layout dummy standar
         if ($headerRowIndex === null) {
             $headerRowIndex = 0;
             $headerMap = [
@@ -175,12 +165,10 @@ function parseExcelFile(string $filePath): array
                 $kelas = $kelas !== '' ? $kelas : null;
             }
 
-            // Skip baris kosong
             if ($nis === '' && $nama === '') {
                 continue;
             }
 
-            // NIS wajib
             if ($nis === '') {
                 continue;
             }
@@ -209,7 +197,7 @@ function parseExcelFile(string $filePath): array
 function getAllGrups(mixed $database_rayhanrp): array
 {
     $pernyataan_rayhanrp = sirey_query(
-        'SELECT grup_id, nama_grup FROM grup_rayhanrp ORDER BY nama_grup ASC',
+        'SELECT grup_id, nama_grup FROM grup_rayhanRP ORDER BY nama_grup ASC',
         ''
     );
 
@@ -227,7 +215,7 @@ function getAllGrups(mixed $database_rayhanrp): array
 function getGrupName(mixed $database_rayhanrp, int $id_grup_rayhanrp): ?string
 {
     $pernyataan_rayhanrp = sirey_query(
-        'SELECT nama_grup FROM grup_rayhanrp WHERE grup_id = ? LIMIT 1',
+        'SELECT nama_grup FROM grup_rayhanRP WHERE grup_id = ? LIMIT 1',
         'i',
         $id_grup_rayhanrp
     );
@@ -284,11 +272,79 @@ function addUserToGrup($database_rayhanrp, int $id_akun_rayhanrp, int $id_grup_r
 }
 
 /**
- * Import pengguna dari Excel.
- * - Default role = siswa
- * - Password default = NIS
- * - Jika $id_grup_override_rayhanrp diisi, semua data masuk ke grup itu
- * - Jika Excel punya kolom KELAS dan tidak ada override, grup akan dibuat dari nama kelas
+ * Import siswa ke kelas dari Excel (Hanya membaca NIS dan melakukan Insert ke Pivot, tanpa mengubah tabel Master)
+ */
+function importSiswaKeKelasDariExcel(string $path_file_rayhanrp, int $id_grup_rayhanrp): array
+{
+    if ($id_grup_rayhanrp <= 0) {
+        return ['success' => false, 'imported' => 0, 'failed' => 0, 'errors' => ['ID kelas tidak valid.']];
+    }
+
+    $hasil_parsing_rayhanrp = parseExcelFile($path_file_rayhanrp);
+    if (isset($hasil_parsing_rayhanrp['error'])) {
+        return ['success' => false, 'imported' => 0, 'failed' => 0, 'errors' => [$hasil_parsing_rayhanrp['error']]];
+    }
+
+    $jumlah_imported_rayhanrp = 0;
+    $jumlah_gagal_rayhanrp = 0;
+    $daftar_error_rayhanrp = [];
+    $nis_diproses_rayhanrp = [];
+
+    foreach (($hasil_parsing_rayhanrp['data'] ?? []) as $baris_rayhanrp) {
+        $nis_rayhanrp = trim((string)($baris_rayhanrp['nis'] ?? ''));
+
+        if ($nis_rayhanrp === '') {
+            continue;
+        }
+
+        if (isset($nis_diproses_rayhanrp[$nis_rayhanrp])) {
+            continue;
+        }
+        $nis_diproses_rayhanrp[$nis_rayhanrp] = true;
+
+        $akun_rayhanrp = sirey_fetch(sirey_query(
+            'SELECT akun_id, nama_lengkap
+             FROM akun_rayhanRP
+             WHERE nis_nip = ? AND role = "siswa"
+             LIMIT 1',
+            's',
+            $nis_rayhanrp
+        ));
+
+        if (!$akun_rayhanrp) {
+            $jumlah_gagal_rayhanrp++;
+            $daftar_error_rayhanrp[] = "NIS {$nis_rayhanrp} tidak ditemukan sebagai siswa.";
+            continue;
+        }
+
+        $hasil_rayhanrp = sirey_execute(
+            'INSERT INTO grup_anggota_rayhanRP (grup_id, akun_id, tipe_keanggotaan, aktif)
+             VALUES (?, ?, "tambahan", 1)
+             ON DUPLICATE KEY UPDATE aktif = 1',
+            'ii',
+            $id_grup_rayhanrp,
+            (int)$akun_rayhanrp['akun_id']
+        );
+
+        if ($hasil_rayhanrp < 0) {
+            $jumlah_gagal_rayhanrp++;
+            $daftar_error_rayhanrp[] = "NIS {$nis_rayhanrp}: gagal ditambahkan ke kelas.";
+            continue;
+        }
+
+        $jumlah_imported_rayhanrp++;
+    }
+
+    return [
+        'success' => $jumlah_imported_rayhanrp > 0,
+        'imported' => $jumlah_imported_rayhanrp,
+        'failed' => $jumlah_gagal_rayhanrp,
+        'errors' => $daftar_error_rayhanrp,
+    ];
+}
+
+/**
+ * Import pengguna baru ke tabel master dari Excel.
  */
 function importUsersFromExcel(mixed $database_rayhanrp, string $path_file_rayhanrp, ?int $id_grup_override_rayhanrp = null): array
 {
@@ -314,7 +370,6 @@ function importUsersFromExcel(mixed $database_rayhanrp, string $path_file_rayhan
             continue;
         }
 
-        // Cegah duplikat NIS/NIP
         $hasil_cek_rayhanrp = sirey_query(
             'SELECT akun_id FROM akun_rayhanRP WHERE nis_nip = ? LIMIT 1',
             's',
@@ -329,7 +384,6 @@ function importUsersFromExcel(mixed $database_rayhanrp, string $path_file_rayhan
         $role_rayhanrp = 'siswa';
         $password_hash_rayhanrp = hashPassword($nis_rayhanrp);
 
-        // Tentukan grup yang dipakai
         $id_grup_simpan_rayhanrp = null;
         if (!empty($id_grup_override_rayhanrp)) {
             $id_grup_simpan_rayhanrp = (int)$id_grup_override_rayhanrp;
@@ -356,7 +410,6 @@ function importUsersFromExcel(mixed $database_rayhanrp, string $path_file_rayhan
 
         $id_akun_rayhanrp = (int)sirey_lastInsertId();
 
-        // Sinkronkan ke tabel anggota grup kalau grup dipilih / kelas ada
         if ($id_grup_simpan_rayhanrp !== null) {
             syncPrimaryGroup($id_akun_rayhanrp, $id_grup_simpan_rayhanrp);
         }

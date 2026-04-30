@@ -162,10 +162,77 @@ function notifKeyboard(array $settings): array {
 // DATABASE HELPERS
 // ============================================================
 
+function createTelegramLoginSession(int $akunId, int $chat): string {
+    $plainToken = bin2hex(random_bytes(32));
+    $hashedToken = hash('sha256', $plainToken);
+
+    sirey_execute(
+        'UPDATE telegram_sessions_rayhanRP
+         SET is_active = 0, invalidated_at = NOW()
+         WHERE akun_id = ? AND is_active = 1',
+        'i',
+        $akunId
+    );
+
+    sirey_execute(
+        'DELETE FROM akun_telegram_rayhanRP
+         WHERE akun_id = ? OR telegram_chat_id = ?',
+        'ii',
+        $akunId,
+        $chat
+    );
+
+    sirey_execute(
+        'INSERT INTO akun_telegram_rayhanRP (akun_id, telegram_chat_id)
+         VALUES (?, ?)',
+        'ii',
+        $akunId,
+        $chat
+    );
+
+    sirey_execute(
+        'INSERT INTO telegram_sessions_rayhanRP
+         (akun_id, chat_id, session_token, is_active, created_at, last_seen_at)
+         VALUES (?, ?, ?, 1, NOW(), NOW())',
+        'iis',
+        $akunId,
+        $chat,
+        $hashedToken
+    );
+
+    return $plainToken;
+}
+
+function invalidateTelegramSession(int $chat): void {
+    sirey_execute(
+        'UPDATE telegram_sessions_rayhanRP
+         SET is_active = 0, invalidated_at = NOW()
+         WHERE chat_id = ? AND is_active = 1',
+        'i',
+        $chat
+    );
+
+    sirey_execute(
+        'DELETE FROM akun_telegram_rayhanRP WHERE telegram_chat_id = ?',
+        'i',
+        $chat
+    );
+}
+
 /**
  * Ambil data user yang sudah login berdasarkan chat_id.
  */
-function getRegisteredUser(int $chat): ?array {
+function getRegisteredUser(int $chat, ?string $sessionToken = null): ?array {
+    $tokenCondition = '';
+    $types = 'i';
+    $params = [$chat];
+
+    if ($sessionToken !== null && $sessionToken !== '') {
+        $tokenCondition = ' AND ts.session_token = ?';
+        $types .= 's';
+        $params[] = hash('sha256', $sessionToken);
+    }
+
     $row = sirey_fetch(sirey_query(
         'SELECT a.akun_id, a.nama_lengkap, a.role, a.nis_nip,
                 at.telegram_chat_id,
@@ -175,13 +242,31 @@ function getRegisteredUser(int $chat): ?array {
                 COALESCE(ns.notif_nilai, 1)      AS notif_nilai
          FROM akun_telegram_rayhanRP at
          INNER JOIN akun_rayhanRP a ON at.akun_id = a.akun_id
+         INNER JOIN telegram_sessions_rayhanRP ts
+                 ON ts.akun_id = a.akun_id
+                AND ts.chat_id = at.telegram_chat_id
+                AND ts.is_active = 1
          LEFT JOIN notif_settings_rayhanRP ns ON ns.akun_id = a.akun_id
          WHERE at.telegram_chat_id = ?
+           ' . $tokenCondition . '
          LIMIT 1',
-        'i', $chat
+        $types,
+        ...$params
     ));
 
-    return $row ?: null;
+    if (!$row) {
+        return null;
+    }
+
+    sirey_execute(
+        'UPDATE telegram_sessions_rayhanRP
+         SET last_seen_at = NOW()
+         WHERE chat_id = ? AND is_active = 1',
+        'i',
+        $chat
+    );
+
+    return $row;
 }
 
 /**
@@ -424,8 +509,7 @@ function getAnalisisKelas(int $guruId): array {
          LEFT JOIN grup_anggota_rayhanRP ga ON g.grup_id = ga.grup_id
              AND ga.aktif = 1
              AND ga.akun_id IN (SELECT akun_id FROM akun_rayhanRP WHERE role = "siswa")
-         LEFT JOIN wali_kelas_rayhanRP wkr ON wkr.grup_id = g.grup_id AND wkr.aktif = 1
-         LEFT JOIN akun_rayhanRP wk ON wkr.akun_id = wk.akun_id
+         LEFT JOIN akun_rayhanRP wk ON g.wali_kelas_id = wk.akun_id
          LEFT JOIN tugas_rayhanRP t ON t.grup_id = g.grup_id AND t.pembuat_id = ?
          LEFT JOIN pengumpulan_rayhanRP p ON p.tugas_id = t.tugas_id
          WHERE gm.akun_id = ? AND gm.aktif = 1
@@ -625,7 +709,7 @@ function getTugasRevisiPending(int $akunId): array {
          WHERE p.akun_id = ? 
            AND pn.status_lulus = "revisi"
            AND NOT EXISTS (
-               SELECT 1 FROM pengumpulan_versi_rayhanrp pv
+               SELECT 1 FROM pengumpulan_versi_rayhanRP pv
                WHERE pv.pengumpulan_id = p.pengumpulan_id
                  AND pv.versi_tipe = "revisi"
                  AND pv.status_approval != "ditolak"
@@ -915,7 +999,7 @@ function formatPreviewPengumpulanFile(array $tugas, string $fileName): string {
 
 /**
  * Simpan revisi pengumpulan tugas (untuk tugas dengan status revisi).
- * Insert ke pengumpulan_versi_rayhanrp dengan status_approval = 'pending'.
+ * Insert ke pengumpulan_versi_rayhanRP dengan status_approval = 'pending'.
  */
 function simpanRevisiTugas(
     int $akunId,
@@ -935,14 +1019,14 @@ function simpanRevisiTugas(
 
     // Hitung nomor versi (ambil versi terbesar, +1)
     $maxVersi = sirey_fetch(sirey_query(
-        'SELECT MAX(nomor_versi) AS max_ver FROM pengumpulan_versi_rayhanrp WHERE pengumpulan_id = ?',
+        'SELECT MAX(nomor_versi) AS max_ver FROM pengumpulan_versi_rayhanRP WHERE pengumpulan_id = ?',
         'i', $pengumpulan_id
     ));
     $nomorVersi = ((int)($maxVersi['max_ver'] ?? 0)) + 1;
 
     // Simpan versi revisi
     $hasil = sirey_execute(
-        'INSERT INTO pengumpulan_versi_rayhanrp
+        'INSERT INTO pengumpulan_versi_rayhanRP
          (pengumpulan_id, nomor_versi, teks_jawaban, file_path, file_nama_asli, 
           versi_tipe, disubmit_oleh, status_approval, dibuat_pada)
          VALUES (?, ?, ?, ?, ?, "revisi", ?, "pending", NOW())',

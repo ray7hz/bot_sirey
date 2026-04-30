@@ -29,10 +29,7 @@ function handleCommand(string $text, int $chat, ?array $user): bool {
 
     // /logout — hanya jika sudah login
     if ($text === '/logout' && $user) {
-        sirey_execute(
-            'DELETE FROM akun_telegram_rayhanRP WHERE telegram_chat_id = ?',
-            'i', $chat
-        );
+        invalidateTelegramSession($chat);
         setState($chat, null);
         sendMsgRemoveKeyboard($chat, "✅ Anda berhasil logout.\n\nKetik /start untuk login kembali.");
         return true;

@@ -42,10 +42,8 @@ if ($aksi_ajax_rayhanrp !== '') {
         $id_matpel_rayhanrp = (int)($_GET['matpel_id'] ?? 0);
         
         if ($admin_ajax_rayhanrp['role'] === 'guru' && $id_matpel_rayhanrp > 0) {
-            // Untuk guru: ambil siswa dari kelas yang diajar guru untuk mapel ini
             $daftar_siswa_rayhanrp = getSiswaFromGuruKelas($admin_ajax_rayhanrp['id'], $id_matpel_rayhanrp);
         } else {
-            // Untuk admin/non-guru: ambil semua siswa
             $daftar_siswa_rayhanrp = $id_matpel_rayhanrp > 0
                 ? sirey_fetchAll(sirey_query(
                     'SELECT a.akun_id, a.nama_lengkap, g.nama_grup
@@ -136,15 +134,52 @@ if ($aksi_ajax_rayhanrp !== '') {
         }
 
         if ($data_tugas_rayhanrp['tipe_tugas'] === 'grup' && (int)($data_tugas_rayhanrp['grup_id'] ?? 0) > 0) {
-            $daftar_siswa_rayhanrp = sirey_fetchAll(sirey_query(
-                'SELECT a.akun_id, a.nama_lengkap, a.nis_nip
-                 FROM akun_rayhanRP a
-                 INNER JOIN grup_anggota_rayhanRP ga ON a.akun_id = ga.akun_id
-                 WHERE ga.grup_id = ? AND ga.aktif = 1 AND a.role = "siswa"
-                 ORDER BY a.nama_lengkap ASC',
-                'i',
+            $rekap_pengumpulan_rayhanrp = getRekapPengumpulanKelas(
+                $id_tugas_ajax_rayhanrp,
                 (int)$data_tugas_rayhanrp['grup_id']
-            ));
+            );
+            $total_siswa_rayhanrp = count($rekap_pengumpulan_rayhanrp);
+            $total_aktif_rayhanrp = count(array_filter($rekap_pengumpulan_rayhanrp, static fn(array $row): bool => (int)$row['aktif_di_kelas'] === 1));
+            $total_kumpul_rayhanrp = count(array_filter($rekap_pengumpulan_rayhanrp, static fn(array $row): bool => !empty($row['pengumpulan_id'])));
+            ?>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:18px;">
+              <div style="padding:14px; background:#eff6ff; border-radius:8px;">
+                <strong><?php echo $total_siswa_rayhanrp; ?></strong><br><small>Total siswa</small>
+              </div>
+              <div style="padding:14px; background:#ecfdf5; border-radius:8px;">
+                <strong><?php echo $total_kumpul_rayhanrp; ?></strong><br><small>Sudah mengumpulkan</small>
+              </div>
+              <div style="padding:14px; background:#fef2f2; border-radius:8px;">
+                <strong><?php echo max(0, $total_aktif_rayhanrp - $total_kumpul_rayhanrp); ?></strong><br><small>Aktif belum mengumpulkan</small>
+              </div>
+            </div>
+
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; padding:8px;">NIS</th>
+                  <th style="text-align:left; padding:8px;">Nama</th>
+                  <th style="text-align:left; padding:8px;">Status Kelas</th>
+                  <th style="text-align:left; padding:8px;">Status Tugas</th>
+                  <th style="text-align:left; padding:8px;">Waktu</th>
+                  <th style="text-align:left; padding:8px;">Nilai</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($rekap_pengumpulan_rayhanrp as $baris_rayhanrp): ?>
+                  <tr>
+                    <td style="padding:8px;"><?php echo htmlspecialchars((string)$baris_rayhanrp['nis_nip']); ?></td>
+                    <td style="padding:8px;"><?php echo htmlspecialchars((string)$baris_rayhanrp['nama_lengkap']); ?></td>
+                    <td style="padding:8px;"><?php echo (int)$baris_rayhanrp['aktif_di_kelas'] === 1 ? 'Aktif' : 'Non-aktif'; ?></td>
+                    <td style="padding:8px;"><?php echo htmlspecialchars((string)$baris_rayhanrp['status_rekap']); ?></td>
+                    <td style="padding:8px;"><?php echo $baris_rayhanrp['waktu_kumpul'] ? formatDatetime((string)$baris_rayhanrp['waktu_kumpul']) : '-'; ?></td>
+                    <td style="padding:8px;"><?php echo $baris_rayhanrp['nilai'] !== null ? htmlspecialchars((string)$baris_rayhanrp['nilai']) : '-'; ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+            <?php
+            exit;
         } else {
             $daftar_siswa_rayhanrp = sirey_fetchAll(sirey_query(
                 'SELECT a.akun_id, a.nama_lengkap, a.nis_nip
@@ -241,11 +276,52 @@ $id_pembuat_rayhanrp = (int)$data_admin_rayhanrp['id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $aksi_rayhanrp = (string)($_POST['act'] ?? '');
+    $id_tugas_rayhanrp = (int)($_POST['id'] ?? 0);
 
-    if (!$bisa_tulis_rayhanrp) {
+    // Handle delete dan bulk_delete terlebih dahulu (tidak memerlukan create_tugas permission)
+    if ($aksi_rayhanrp === 'delete') {
+        $data_tugas_rayhanrp = sirey_fetch(sirey_query('SELECT pembuat_id FROM tugas_rayhanRP WHERE tugas_id = ?', 'i', $id_tugas_rayhanrp));
+        if (!$data_tugas_rayhanrp || ($data_admin_rayhanrp['role'] === 'guru' && (int)$data_tugas_rayhanrp['pembuat_id'] !== (int)$data_admin_rayhanrp['id'])) {
+            $error_rayhanrp = 'Anda tidak berhak menghapus tugas ini.';
+        } else {
+            $hasil_hapus_rayhanrp = safeDeleteTugas($id_tugas_rayhanrp);
+            if ($hasil_hapus_rayhanrp['success']) {
+                auditLog($data_admin_rayhanrp['id'], 'delete_tugas', 'tugas', $id_tugas_rayhanrp);
+                $pesan_rayhanrp = $hasil_hapus_rayhanrp['message'];
+            } else {
+                $error_rayhanrp = $hasil_hapus_rayhanrp['message'];
+            }
+        }
+    } elseif ($aksi_rayhanrp === 'bulk_delete') {
+        $daftar_id_rayhanrp = array_filter(array_map('intval', (array)($_POST['ids'] ?? [])));
+        $jumlah_hapus_rayhanrp = 0;
+        $jumlah_gagal_rayhanrp = 0;
+        foreach ($daftar_id_rayhanrp as $id_item_rayhanrp) {
+            $data_tugas_rayhanrp = sirey_fetch(sirey_query('SELECT pembuat_id FROM tugas_rayhanRP WHERE tugas_id = ?', 'i', $id_item_rayhanrp));
+            if (!$data_tugas_rayhanrp || ($data_admin_rayhanrp['role'] === 'guru' && (int)$data_tugas_rayhanrp['pembuat_id'] !== (int)$data_admin_rayhanrp['id'])) {
+                $jumlah_gagal_rayhanrp++;
+                continue;
+            }
+            $hasil_hapus_rayhanrp = safeDeleteTugas($id_item_rayhanrp);
+            if ($hasil_hapus_rayhanrp['success']) {
+                $jumlah_hapus_rayhanrp++;
+            } else {
+                $jumlah_gagal_rayhanrp++;
+            }
+        }
+        auditLog($data_admin_rayhanrp['id'], 'bulk_delete_tugas', 'tugas', null, ['ids' => $daftar_id_rayhanrp]);
+        if ($jumlah_hapus_rayhanrp > 0) {
+            $pesan_rayhanrp = "{$jumlah_hapus_rayhanrp} tugas berhasil dihapus.";
+            if ($jumlah_gagal_rayhanrp > 0) {
+                $pesan_rayhanrp .= " {$jumlah_gagal_rayhanrp} tugas gagal dilewati.";
+            }
+        } else {
+            $error_rayhanrp = 'Tidak ada tugas yang berhasil dihapus.';
+        }
+    } elseif (!$bisa_tulis_rayhanrp) {
+        // Untuk create, update, toggle_status, toggle_revision memerlukan permission
         $error_rayhanrp = 'Anda tidak memiliki izin mengelola tugas.';
     } else {
-        $id_tugas_rayhanrp = (int)($_POST['id'] ?? 0);
         $tipe_tugas_rayhanrp = (string)($_POST['tipe_tugas'] ?? 'grup');
         $id_grup_rayhanrp = (int)($_POST['grup_id'] ?? 0);
         $judul_rayhanrp = trim((string)($_POST['judul'] ?? ''));
@@ -263,7 +339,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             : null;
         $nama_matpel_rayhanrp = $data_matpel_rayhanrp['nama'] ?? '';
 
-        // Validate tipe tugas untuk guru
         if ($data_admin_rayhanrp['role'] === 'guru' && $tipe_tugas_rayhanrp !== 'grup' && $tipe_tugas_rayhanrp !== 'perorang') {
             $error_rayhanrp = 'Tipe tugas tidak valid. Guru hanya dapat membuat tugas grup atau perorangan.';
         } elseif ($id_matpel_rayhanrp > 0 && !$data_matpel_rayhanrp) {
@@ -279,7 +354,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($tipe_tugas_rayhanrp === 'perorang' && empty($_POST['recipient_ids'])) {
             $error_rayhanrp = 'Pilih minimal satu siswa untuk tugas perorangan.';
         } else {
-            // Validate bahwa semua recipient adalah siswa dari kelas guru (untuk guru)
             if ($data_admin_rayhanrp['role'] === 'guru' && $tipe_tugas_rayhanrp === 'perorang') {
                 $recipient_ids_rayhanrp = array_filter(array_map('intval', (array)($_POST['recipient_ids'] ?? [])));
                 foreach ($recipient_ids_rayhanrp as $id_akun_rayhanrp) {
@@ -329,7 +403,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             "Deadline: " . $tenggat_format_rayhanrp . "\n";
 
                         if ($tipe_tugas_rayhanrp === 'grup' && $id_grup_rayhanrp > 0) {
-                            // Kirim notifikasi ke semua siswa di kelas
                             $targets = sirey_fetchAll(sirey_query(
                                 'SELECT DISTINCT at.telegram_chat_id
                                  FROM akun_telegram_rayhanRP at
@@ -359,7 +432,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 );
                             }
                         } elseif ($tipe_tugas_rayhanrp === 'perorang') {
-                            // Kirim notifikasi ke siswa yang ditunjuk saja
                             $recipient_ids_rayhanrp = array_filter(array_map('intval', (array)($_POST['recipient_ids'] ?? [])));
                             
                             if (!empty($recipient_ids_rayhanrp)) {
@@ -425,28 +497,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     auditLog($data_admin_rayhanrp['id'], 'update_tugas', 'tugas', $id_tugas_rayhanrp, ['matpel_id' => $id_matpel_rayhanrp > 0 ? $id_matpel_rayhanrp : null]);
                     $pesan_rayhanrp = 'Tugas berhasil diperbarui.';
                 }
-            } elseif ($aksi_rayhanrp === 'delete') {
-                $data_tugas_rayhanrp = sirey_fetch(sirey_query('SELECT pembuat_id FROM tugas_rayhanRP WHERE tugas_id = ?', 'i', $id_tugas_rayhanrp));
-                if (!$data_tugas_rayhanrp || ($data_admin_rayhanrp['role'] === 'guru' && (int)$data_tugas_rayhanrp['pembuat_id'] !== (int)$data_admin_rayhanrp['id'])) {
-                    $error_rayhanrp = 'Anda tidak berhak menghapus tugas ini.';
-                } else {
-                    sirey_execute('DELETE FROM tugas_perorang_rayhanRP WHERE tugas_id = ?', 'i', $id_tugas_rayhanrp);
-                    sirey_execute('DELETE FROM tugas_rayhanRP WHERE tugas_id = ?', 'i', $id_tugas_rayhanrp);
-                    auditLog($data_admin_rayhanrp['id'], 'delete_tugas', 'tugas', $id_tugas_rayhanrp);
-                    $pesan_rayhanrp = 'Tugas berhasil dihapus.';
-                }
-            } elseif ($aksi_rayhanrp === 'bulk_delete') {
-                $daftar_id_rayhanrp = array_filter(array_map('intval', (array)($_POST['ids'] ?? [])));
-                foreach ($daftar_id_rayhanrp as $id_item_rayhanrp) {
-                    $data_tugas_rayhanrp = sirey_fetch(sirey_query('SELECT pembuat_id FROM tugas_rayhanRP WHERE tugas_id = ?', 'i', $id_item_rayhanrp));
-                    if (!$data_tugas_rayhanrp || ($data_admin_rayhanrp['role'] === 'guru' && (int)$data_tugas_rayhanrp['pembuat_id'] !== (int)$data_admin_rayhanrp['id'])) {
-                        continue;
-                    }
-                    sirey_execute('DELETE FROM tugas_perorang_rayhanRP WHERE tugas_id = ?', 'i', $id_item_rayhanrp);
-                    sirey_execute('DELETE FROM tugas_rayhanRP WHERE tugas_id = ?', 'i', $id_item_rayhanrp);
-                }
-                auditLog($data_admin_rayhanrp['id'], 'bulk_delete_tugas', 'tugas', null, ['ids' => $daftar_id_rayhanrp]);
-                $pesan_rayhanrp = 'Tugas terpilih berhasil dihapus.';
             }
         }
     }
@@ -457,6 +507,9 @@ $filter_id_grup_rayhanrp = (int)($_GET['filter_grup'] ?? 0);
 $filter_status_rayhanrp = trim((string)($_GET['filter_status'] ?? ''));
 $filter_id_matpel_rayhanrp = (int)($_GET['filter_matpel'] ?? 0);
 $filter_id_guru_rayhanrp = (int)($_GET['filter_guru'] ?? 0);
+$halaman_rayhanrp = max(1, (int)($_GET['page'] ?? 1));
+$limit_rayhanrp = 10;
+$offset_rayhanrp = ($halaman_rayhanrp - 1) * $limit_rayhanrp;
 
 $pernyataan_sql_rayhanrp = 'SELECT t.tugas_id, t.tipe_tugas, t.grup_id, g.nama_grup,
                t.judul, t.matpel_id, mp.kode AS matpel_kode, mp.nama AS matpel_nama,
@@ -508,11 +561,21 @@ if ($filter_id_guru_rayhanrp > 0 && in_array($data_admin_rayhanrp['role'], ['kep
     $param_rayhanrp[] = $filter_id_guru_rayhanrp;
 }
 
-$pernyataan_sql_rayhanrp .= ' ORDER BY t.tenggat DESC';
+$sql_hitung_rayhanrp = 'SELECT COUNT(*) AS total FROM (' . $pernyataan_sql_rayhanrp . ') tugas_terfilter';
+$baris_total_tugas_rayhanrp = sirey_fetch(sirey_query($sql_hitung_rayhanrp, $tipe_rayhanrp, ...$param_rayhanrp));
+$total_tugas_rayhanrp = (int)($baris_total_tugas_rayhanrp['total'] ?? 0);
+$total_halaman_rayhanrp = max(1, (int)ceil($total_tugas_rayhanrp / $limit_rayhanrp));
 
-$daftar_tugas_rayhanrp = $tipe_rayhanrp !== ''
-    ? sirey_fetchAll(sirey_query($pernyataan_sql_rayhanrp, $tipe_rayhanrp, ...$param_rayhanrp))
-    : sirey_fetchAll(sirey_query($pernyataan_sql_rayhanrp));
+if ($halaman_rayhanrp > $total_halaman_rayhanrp) {
+    $halaman_rayhanrp = $total_halaman_rayhanrp;
+    $offset_rayhanrp = ($halaman_rayhanrp - 1) * $limit_rayhanrp;
+}
+
+$pernyataan_sql_rayhanrp .= ' ORDER BY t.tenggat DESC LIMIT ? OFFSET ?';
+$tipe_query_tugas_rayhanrp = $tipe_rayhanrp . 'ii';
+$param_query_tugas_rayhanrp = [...$param_rayhanrp, $limit_rayhanrp, $offset_rayhanrp];
+
+$daftar_tugas_rayhanrp = sirey_fetchAll(sirey_query($pernyataan_sql_rayhanrp, $tipe_query_tugas_rayhanrp, ...$param_query_tugas_rayhanrp));
 
 $daftar_grup_rayhanrp = $data_admin_rayhanrp['role'] === 'guru'
     ? getGrupDiajarGuru($data_admin_rayhanrp['id'])
@@ -526,11 +589,8 @@ $daftar_guru_rayhanrp = in_array($data_admin_rayhanrp['role'], ['kepala_sekolah'
     ? sirey_fetchAll(sirey_query('SELECT akun_id, nama_lengkap FROM akun_rayhanRP WHERE role = "guru" AND aktif = 1 ORDER BY nama_lengkap ASC'))
     : [];
 
-// Untuk guru: ambil siswa dari kelas yang diajar guru
-// Untuk non-guru: ambil semua siswa untuk flexible assignment
 if ($data_admin_rayhanrp['role'] === 'guru') {
     $daftar_siswa_rayhanrp = [];
-    // Siswa akan di-load dynamically via AJAX berdasarkan matpel yang dipilih
 } else {
     $daftar_siswa_rayhanrp = sirey_fetchAll(sirey_query(
         'SELECT a.akun_id, a.nama_lengkap, g.nama_grup
@@ -794,6 +854,21 @@ $now = new DateTimeImmutable();
         <?php endforeach; ?>
       </tbody>
     </table>
+    <?php if ($total_halaman_rayhanrp > 1): ?>
+      <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center; padding:16px 0;">
+        <?php
+          $query_pagination_rayhanrp = $_GET;
+          for ($i_halaman_rayhanrp = 1; $i_halaman_rayhanrp <= $total_halaman_rayhanrp; $i_halaman_rayhanrp++):
+            $query_pagination_rayhanrp['page'] = $i_halaman_rayhanrp;
+            $url_halaman_rayhanrp = '?' . http_build_query($query_pagination_rayhanrp);
+        ?>
+          <a href="<?php echo htmlspecialchars($url_halaman_rayhanrp); ?>"
+             class="btn btn-sm <?php echo $i_halaman_rayhanrp === $halaman_rayhanrp ? 'btn-primary' : 'btn-secondary'; ?>">
+            <?php echo $i_halaman_rayhanrp; ?>
+          </a>
+        <?php endfor; ?>
+      </div>
+    <?php endif; ?>
   <?php endif; ?>
 </div>
 
@@ -884,7 +959,6 @@ $now = new DateTimeImmutable();
       if (recipientField) {
         recipientField.style.display = tipe === 'perorang' ? 'block' : 'none';
         
-        // Load siswa jika tipe berubah ke perorang dan ada matpel yang dipilih
         if (tipe === 'perorang') {
           const matpelId = document.getElementById('create_matpel_id')?.value;
           if (matpelId) {
@@ -994,11 +1068,9 @@ $now = new DateTimeImmutable();
         return Promise.resolve();
       }
 
-      // Determine task type
       const tipeSelect = document.getElementById('tipe_tugas') || document.getElementById('edit_tipe_tugas');
       const tipe = tipeSelect ? tipeSelect.value : 'grup';
 
-      // If task type is perorang (individual), load students instead
       if (tipe === 'perorang') {
         return fetch('tugas.php?action=get_siswa_by_matpel&matpel_id=' + encodeURIComponent(trimmed))
           .then((response) => response.json())
@@ -1013,7 +1085,6 @@ $now = new DateTimeImmutable();
           });
       }
 
-      // Otherwise load classes (grup)
       return fetch('tugas.php?action=get_kelas_by_matpel&matpel_id=' + encodeURIComponent(trimmed))
         .then((response) => response.json())
         .then((data) => {

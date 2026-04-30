@@ -32,16 +32,11 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
             return true;
         }
 
-        // Daftarkan chat_id ke tabel akun_telegram
-        sirey_execute(
-            'INSERT INTO akun_telegram_rayhanRP (akun_id, telegram_chat_id)
-             VALUES (?, ?)
-             ON DUPLICATE KEY UPDATE telegram_chat_id = ?',
-            'iii', (int)$akun['akun_id'], $chat, $chat
-        );
+        $sessionToken = createTelegramLoginSession((int)$akun['akun_id'], $chat);
 
         setState($chat, [
             'step'       => 'menu',
+            'session_token' => $sessionToken,
             'user_cache' => [
                 'akun_id'        => $akun['akun_id'],
                 'nama_lengkap'   => $akun['nama_lengkap'],

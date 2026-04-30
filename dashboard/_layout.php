@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
 }
 
 $data_admin_rayhanrp = requireAdminSession('login.php');
+ensureSireySchema();
 
 $judul_halaman_rayhanrp ??= 'Dashboard';
 $menu_aktif_rayhanrp ??= 'dashboard';

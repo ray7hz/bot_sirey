@@ -400,11 +400,7 @@ function handleMenu(string $text, int $chat, array $user): bool {
 
     // ── LOGOUT ──────────────────────────────────────────────────────────────
     if ($text === '🚪 Logout') {
-        // Hapus dari database
-        sirey_execute(
-            'DELETE FROM akun_telegram_rayhanRP WHERE telegram_chat_id = ?',
-            'i', $chat
-        );
+        invalidateTelegramSession($chat);
         
         // Clear state
         setState($chat, null);

@@ -58,7 +58,7 @@ if (!function_exists('guruHasScopeToGrup')) {
     function guruHasScopeToGrup(int $id_guru_rayhanrp, int $id_grup_rayhanrp, ?int $id_matpel_rayhanrp = null): bool
     {
         $pernyataan_sql_rayhanrp = 'SELECT id
-                FROM guru_mengajar_rayhanrp
+                FROM guru_mengajar_rayhanRP
                 WHERE akun_id = ?
                   AND grup_id = ?
                   AND aktif = 1';

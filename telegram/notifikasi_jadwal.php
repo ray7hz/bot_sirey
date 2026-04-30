@@ -29,9 +29,9 @@ error_log("[notif_jadwal] ▶ Dijalankan jam={$jam} hari={$hari}");
 $users = sirey_fetchAll(sirey_query(
     'SELECT a.akun_id, a.nama_lengkap, a.role, at.telegram_chat_id,
             TIME_FORMAT(COALESCE(ns.jam_notif_jadwal, "07:00:00"), "%H:%i") AS jam_notif
-     FROM akun_telegram_rayhanrp at
-     JOIN akun_rayhanrp a ON at.akun_id = a.akun_id
-     LEFT JOIN notif_settings_rayhanrp ns ON ns.akun_id = a.akun_id
+     FROM akun_telegram_rayhanRP at
+     JOIN akun_rayhanRP a ON at.akun_id = a.akun_id
+     LEFT JOIN notif_settings_rayhanRP ns ON ns.akun_id = a.akun_id
      WHERE at.telegram_chat_id > 0
        AND a.aktif = 1
        AND COALESCE(ns.notif_jadwal, 1) = 1',
@@ -61,7 +61,7 @@ foreach ($users as $u) {
     // Key unik: tipe=jadwal, pesan mengandung marker [uid:X|jam:H:i|tgl:Y-m-d]
     $markerCek = "[uid:{$uid}|jam:{$jam}|tgl:{$today}]";
     $sudah = sirey_fetch(sirey_query(
-        'SELECT 1 FROM notifikasi_rayhanrp
+        'SELECT 1 FROM notifikasi_rayhanRP
          WHERE tipe = "jadwal"
            AND pesan LIKE ?
            AND DATE(waktu_kirim) = ?
@@ -81,9 +81,9 @@ foreach ($users as $u) {
             'SELECT gm.jam_mulai, gm.jam_selesai,
                     mp.nama  AS matpel,
                     g.nama_grup
-             FROM guru_mengajar_rayhanrp gm
-             JOIN mata_pelajaran_rayhanrp mp ON mp.matpel_id = gm.matpel_id
-             JOIN grup_rayhanrp g            ON g.grup_id    = gm.grup_id
+             FROM guru_mengajar_rayhanRP gm
+             JOIN mata_pelajaran_rayhanRP mp ON mp.matpel_id = gm.matpel_id
+             JOIN grup_rayhanRP g            ON g.grup_id    = gm.grup_id
              WHERE gm.akun_id = ?
                AND gm.hari    = ?
                AND gm.aktif   = 1
@@ -97,11 +97,11 @@ foreach ($users as $u) {
                     mp.nama          AS matpel,
                     g.nama_grup,
                     guru.nama_lengkap AS nama_guru
-             FROM grup_anggota_rayhanrp ga
-             JOIN grup_rayhanrp g              ON g.grup_id    = ga.grup_id
-             JOIN guru_mengajar_rayhanrp gm    ON gm.grup_id   = ga.grup_id
-             JOIN mata_pelajaran_rayhanrp mp   ON mp.matpel_id = gm.matpel_id
-             JOIN akun_rayhanrp guru           ON guru.akun_id = gm.akun_id
+             FROM grup_anggota_rayhanRP ga
+             JOIN grup_rayhanRP g              ON g.grup_id    = ga.grup_id
+             JOIN guru_mengajar_rayhanRP gm    ON gm.grup_id   = ga.grup_id
+             JOIN mata_pelajaran_rayhanRP mp   ON mp.matpel_id = gm.matpel_id
+             JOIN akun_rayhanRP guru           ON guru.akun_id = gm.akun_id
              WHERE ga.akun_id = ?
                AND ga.aktif   = 1
                AND gm.hari    = ?
@@ -138,7 +138,7 @@ foreach ($users as $u) {
     if (sendMsg($chatId, $pesan)) {
         $marker = $markerCek; // "[uid:X|jam:H:i|tgl:Y-m-d]"
         sirey_execute(
-            'INSERT INTO notifikasi_rayhanrp (tipe, pesan, jumlah_terkirim, waktu_kirim)
+            'INSERT INTO notifikasi_rayhanRP (tipe, pesan, jumlah_terkirim, waktu_kirim)
              VALUES ("jadwal", ?, 1, NOW())',
             's', $pesan . " {$marker}"
         );

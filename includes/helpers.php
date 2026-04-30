@@ -3,8 +3,79 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../koneksi.php';
 
+// ================== SCHEMA GUARDS ==================
+// Fungsi ini memastikan tabel dan kolom database yang dibutuhkan tersedia.
+
+function sirey_tableExists(string $tableName): bool
+{
+    $row = sirey_fetch(sirey_query(
+        'SELECT COUNT(*) AS total
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+        's',
+        $tableName
+    ));
+
+    return (int)($row['total'] ?? 0) > 0;
+}
+
+function sirey_columnExists(string $tableName, string $columnName): bool
+{
+    $row = sirey_fetch(sirey_query(
+        'SELECT COUNT(*) AS total
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = ?',
+        'ss',
+        $tableName,
+        $columnName
+    ));
+
+    return (int)($row['total'] ?? 0) > 0;
+}
+
+function ensureSireySchema(): void
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+
+    try {
+        if (!sirey_tableExists('telegram_sessions_rayhanRP')) {
+            sirey_execute(
+                'CREATE TABLE telegram_sessions_rayhanRP (
+                    session_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    akun_id INT NOT NULL,
+                    chat_id BIGINT NOT NULL,
+                    session_token CHAR(64) NOT NULL,
+                    is_active TINYINT(1) NOT NULL DEFAULT 1,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_seen_at DATETIME NULL,
+                    invalidated_at DATETIME NULL,
+                    INDEX idx_tg_session_akun_active (akun_id, is_active),
+                    INDEX idx_tg_session_chat_active (chat_id, is_active),
+                    INDEX idx_tg_session_token (session_token)
+                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        }
+
+        if (sirey_tableExists('grup_rayhanRP') && !sirey_columnExists('grup_rayhanRP', 'wali_kelas_id')) {
+            sirey_execute('ALTER TABLE grup_rayhanRP ADD COLUMN wali_kelas_id INT NULL AFTER pembuat_id');
+            sirey_execute('ALTER TABLE grup_rayhanRP ADD INDEX idx_grup_wali_kelas (wali_kelas_id)');
+        }
+    } catch (Throwable $e) {
+        error_log('ensureSireySchema: ' . $e->getMessage());
+    }
+}
+
 
 // ================== SESSION ==================
+// Kumpulan fungsi untuk mengatur sesi login (siapa yang sedang menggunakan web)
 
 function startSession(): void
 {
@@ -96,6 +167,7 @@ function hashPassword(string $password): string
 
 
 // ================== TELEGRAM ==================
+// Fungsi untuk menghubungkan sistem dengan Bot Telegram
 
 function getTelegramBotToken(): string
 {
@@ -133,7 +205,6 @@ function sendTelegramMessage(int $id_chat_rayhanrp, string $teks_rayhanrp, ?arra
     $curl_error = curl_error($koneksi_rayhanrp);
     curl_close($koneksi_rayhanrp);
 
-    // Parse JSON response untuk check "ok": true
     if (empty($respons_rayhanrp)) {
         error_log("[sendTelegramMessage] ❌ No response dari Telegram API, curl error: $curl_error");
         return false;
@@ -170,7 +241,6 @@ function loadStates(): array
     $file_rayhanrp = _stateFile();
     if (!file_exists($file_rayhanrp)) return [];
 
-    // Retry logic untuk handle file locking
     $retries = 3;
     $delay = 100000; // 0.1 second
     
@@ -199,7 +269,6 @@ function saveStates(array $data_rayhanrp): void
         mkdir($direktori_rayhanrp, 0755, true);
     }
 
-    // Retry logic untuk handle file locking
     $retries = 3;
     $delay = 100000; // 0.1 second
     
@@ -264,18 +333,12 @@ function isValidNip(string $nip): bool
 
 // ================== TELEGRAM HELPERS ==================
 
-/**
- * Check if text is a command (e.g., /start, /stop)
- */
 function isCommand(string $text, string $command): bool
 {
     $pattern = '/^' . preg_quote($command, '/') . '(@[A-Za-z0-9_]+)?(\s|$)/i';
     return (bool)preg_match($pattern, trim($text));
 }
 
-/**
- * Build reply keyboard
- */
 function buildKeyboard(array $buttons, bool $resizable = true): array
 {
     return [
@@ -285,9 +348,6 @@ function buildKeyboard(array $buttons, bool $resizable = true): array
     ];
 }
 
-/**
- * Build inline keyboard
- */
 function buildInlineKeyboard(array $buttons): array
 {
     return ['inline_keyboard' => $buttons];
@@ -469,6 +529,103 @@ function syncPrimaryGroup(int $akunId, ?int $grupId): void
             $grupId
         );
     }
+}
+
+// ================== TASK / CLASS REPORT HELPERS ==================
+
+/**
+ * Menghapus tugas beserta semua data terkait secara aman menggunakan database transaction
+ */
+function safeDeleteTugas(int $tugasId): array
+{
+    if ($tugasId <= 0) {
+        return ['success' => false, 'message' => 'ID tugas tidak valid.'];
+    }
+
+    $db = sirey_getDatabase();
+
+    try {
+        mysqli_begin_transaction($db);
+
+        sirey_execute(
+            'DELETE pn FROM penilaian_rayhanRP pn
+             INNER JOIN pengumpulan_rayhanRP p ON pn.pengumpulan_id = p.pengumpulan_id
+             WHERE p.tugas_id = ?',
+            'i',
+            $tugasId
+        );
+
+        if (sirey_tableExists('pengumpulan_versi_rayhanRP')) {
+            sirey_execute(
+                'DELETE pv FROM pengumpulan_versi_rayhanRP pv
+                 INNER JOIN pengumpulan_rayhanRP p ON pv.pengumpulan_id = p.pengumpulan_id
+                 WHERE p.tugas_id = ?',
+                'i',
+                $tugasId
+            );
+        }
+
+        sirey_execute('DELETE FROM pengumpulan_rayhanRP WHERE tugas_id = ?', 'i', $tugasId);
+        sirey_execute('DELETE FROM tugas_perorang_rayhanRP WHERE tugas_id = ?', 'i', $tugasId);
+
+        $deleted = sirey_execute('DELETE FROM tugas_rayhanRP WHERE tugas_id = ?', 'i', $tugasId);
+
+        mysqli_commit($db);
+
+        return [
+            'success' => $deleted >= 1,
+            'message' => $deleted >= 1 ? 'Tugas berhasil dihapus.' : 'Tugas tidak ditemukan.',
+        ];
+    } catch (Throwable $e) {
+        mysqli_rollback($db);
+        error_log('safeDeleteTugas: ' . $e->getMessage());
+
+        return [
+            'success' => false,
+            'message' => 'Gagal menghapus tugas: ' . $e->getMessage(),
+        ];
+    }
+}
+
+/**
+ * Mengambil rekap status pengumpulan seluruh siswa dalam satu kelas, 
+ * termasuk yang belum mengumpulkan.
+ */
+function getRekapPengumpulanKelas(int $tugasId, int $grupId): array
+{
+    if ($tugasId <= 0 || $grupId <= 0) {
+        return [];
+    }
+
+    return sirey_fetchAll(sirey_query(
+        'SELECT
+            a.akun_id,
+            a.nis_nip,
+            a.nama_lengkap,
+            ga.aktif AS aktif_di_kelas,
+            p.pengumpulan_id,
+            p.status AS status_pengumpulan,
+            p.waktu_kumpul,
+            p.via,
+            pn.nilai,
+            CASE
+                WHEN ga.aktif = 0 THEN "Non-aktif"
+                WHEN p.pengumpulan_id IS NULL THEN "Belum Mengumpulkan"
+                ELSE "Sudah Mengumpulkan"
+            END AS status_rekap
+         FROM grup_anggota_rayhanRP ga
+         INNER JOIN akun_rayhanRP a ON a.akun_id = ga.akun_id
+         LEFT JOIN pengumpulan_rayhanRP p
+                ON p.akun_id = a.akun_id
+               AND p.tugas_id = ?
+         LEFT JOIN penilaian_rayhanRP pn ON pn.pengumpulan_id = p.pengumpulan_id
+         WHERE ga.grup_id = ?
+           AND a.role = "siswa"
+         ORDER BY a.nama_lengkap ASC',
+        'ii',
+        $tugasId,
+        $grupId
+    ));
 }
 
 // ================== GURU TEACHING SCOPE ==================

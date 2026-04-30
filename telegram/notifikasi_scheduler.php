@@ -10,7 +10,7 @@ function notifySiswaRevisiApproved(int $pengumpulanId, int $nomorVersi, int $gur
          FROM pengumpulan_rayhanRP p
          JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id
          JOIN akun_rayhanRP a ON p.akun_id = a.akun_id
-         JOIN akun_telegram_rayhanrp at ON at.akun_id = a.akun_id
+         JOIN akun_telegram_rayhanRP at ON at.akun_id = a.akun_id
          LEFT JOIN akun_rayhanRP guru ON guru.akun_id = ?
          WHERE p.pengumpulan_id = ? LIMIT 1',
         'ii', $guruId, $pengumpulanId
@@ -33,7 +33,7 @@ function notifySiswaRevisiRejected(int $pengumpulanId, int $nomorVersi, int $gur
          FROM pengumpulan_rayhanRP p
          JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id
          JOIN akun_rayhanRP a ON p.akun_id = a.akun_id
-         JOIN akun_telegram_rayhanrp at ON at.akun_id = a.akun_id
+         JOIN akun_telegram_rayhanRP at ON at.akun_id = a.akun_id
          LEFT JOIN akun_rayhanRP guru ON guru.akun_id = ?
          WHERE p.pengumpulan_id = ? LIMIT 1',
         'ii', $guruId, $pengumpulanId

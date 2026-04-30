@@ -8,6 +8,8 @@ require_once __DIR__ . '/handler/command.php';
 require_once __DIR__ . '/handler/state.php';
 require_once __DIR__ . '/handler/menu.php';
 
+ensureSireySchema();
+
 $input = json_decode(file_get_contents('php://input'), true);
 
 $msg      = $input['message'] ?? $input['callback_query']['message'] ?? null;
@@ -27,9 +29,14 @@ $step  = $state['step'] ?? 'init';
 
 $user = null;
 if (!empty($state['user_cache']) && is_array($state['user_cache'])) {
-    $user   = $state['user_cache'];
-    $userDb = getRegisteredUser($chat);
-    if ($userDb) $user = array_merge($userDb, $state['user_cache']);
+    $userDb = getRegisteredUser($chat, (string)($state['session_token'] ?? ''));
+    if ($userDb) {
+        $user = array_merge($userDb, $state['user_cache']);
+    } elseif (!in_array($step, ['ask_nis', 'ask_password'], true)) {
+        setState($chat, ['step' => 'ask_nis']);
+        sendMsgRemoveKeyboard($chat, "Sesi Anda sudah tidak aktif karena akun ini login di perangkat lain.\n\nKetik /start untuk login kembali.");
+        exit;
+    }
 } else {
     $user = getRegisteredUser($chat);
     if ($user && $step !== 'ask_nis' && $step !== 'ask_password') {
