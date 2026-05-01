@@ -135,7 +135,7 @@ function settingsKeyboard(): array {
     return [
         ['🔑 Ganti Password'],
         ['🕐 Atur Jam Notifikasi'],
-        ['🔙 Kembali Ke Menu'],
+        ['🔙 Kembali ke Menu'],
     ];
 }
 
@@ -153,7 +153,7 @@ function notifKeyboard(array $settings): array {
         ["{$tugas} Notif Tugas"],
         ["{$pengum} Notif Pengumuman"],
         ["{$nilai} Notif Nilai"],
-        ['🔙 Kembali Ke Menu'],
+        ['🔙 Kembali ke Menu'],
     ];
 }
 
@@ -712,7 +712,7 @@ function getTugasRevisiPending(int $akunId): array {
                SELECT 1 FROM pengumpulan_versi_rayhanRP pv
                WHERE pv.pengumpulan_id = p.pengumpulan_id
                  AND pv.versi_tipe = "revisi"
-                 AND pv.status_approval != "ditolak"
+                 AND pv.status_approval = "disetujui"
            )
          ORDER BY t.tenggat ASC',
         'i', $akunId
@@ -1007,69 +1007,80 @@ function simpanRevisiTugas(
     ?string $teksJawaban = null,
     ?string $filePath = null
 ): bool {
-    // Get pengumpulan_id dari tugas tersebut
-    $pengumpulan = sirey_fetch(sirey_query(
-        'SELECT pengumpulan_id FROM pengumpulan_rayhanRP WHERE akun_id = ? AND tugas_id = ?',
-        'ii', $akunId, $tugasId
-    ));
-
-    if (!$pengumpulan) return false;
-
-    $pengumpulan_id = (int)$pengumpulan['pengumpulan_id'];
-
-    // Hitung nomor versi (ambil versi terbesar, +1)
-    $maxVersi = sirey_fetch(sirey_query(
-        'SELECT MAX(nomor_versi) AS max_ver FROM pengumpulan_versi_rayhanRP WHERE pengumpulan_id = ?',
-        'i', $pengumpulan_id
-    ));
-    $nomorVersi = ((int)($maxVersi['max_ver'] ?? 0)) + 1;
-
-    // Simpan versi revisi
-    $hasil = sirey_execute(
-        'INSERT INTO pengumpulan_versi_rayhanRP
-         (pengumpulan_id, nomor_versi, teks_jawaban, file_path, file_nama_asli, 
-          versi_tipe, disubmit_oleh, status_approval, dibuat_pada)
-         VALUES (?, ?, ?, ?, ?, "revisi", ?, "pending", NOW())',
-        'iissssi',
-        $pengumpulan_id,
-        $nomorVersi,
-        $teksJawaban ?? '',
-        $filePath ?? '',
-        $filePath ? basename($filePath) : '',
-        $akunId
-    );
-
-    if ($hasil < 1) return false;
-
-    // Kirim notifikasi ke guru pembuat tugas
-    $tugas = sirey_fetch(sirey_query(
-        'SELECT t.judul, t.pembuat_id FROM tugas_rayhanRP t WHERE t.tugas_id = ?',
-        'i', $tugasId
-    ));
-
-    if ($tugas) {
-        $guru = sirey_fetch(sirey_query(
-            'SELECT at.telegram_chat_id FROM akun_telegram_rayhanRP at WHERE at.akun_id = ?',
-            'i', (int)$tugas['pembuat_id']
+    try {
+        // Get pengumpulan_id dari tugas tersebut
+        $pengumpulan = sirey_fetch(sirey_query(
+            'SELECT pengumpulan_id FROM pengumpulan_rayhanRP WHERE akun_id = ? AND tugas_id = ?',
+            'ii', $akunId, $tugasId
         ));
 
-        if ($guru && !empty($guru['telegram_chat_id'])) {
-            $siswa = sirey_fetch(sirey_query(
-                'SELECT nama_lengkap FROM akun_rayhanRP WHERE akun_id = ?',
-                'i', $akunId
+        if (!$pengumpulan) {
+            error_log("[simpanRevisiTugas] Pengumpulan tidak ditemukan untuk akun_id=$akunId, tugas_id=$tugasId");
+            return false;
+        }
+
+        $pengumpulan_id = (int)$pengumpulan['pengumpulan_id'];
+
+        // Hitung nomor versi (ambil versi terbesar, +1)
+        $maxVersi = sirey_fetch(sirey_query(
+            'SELECT MAX(nomor_versi) AS max_ver FROM pengumpulan_versi_rayhanRP WHERE pengumpulan_id = ?',
+            'i', $pengumpulan_id
+        ));
+        $nomorVersi = ((int)($maxVersi['max_ver'] ?? 0)) + 1;
+
+        // Simpan versi revisi
+        $hasil = sirey_execute(
+            'INSERT INTO pengumpulan_versi_rayhanRP
+             (pengumpulan_id, nomor_versi, teks_jawaban, file_path, file_nama_asli, 
+              versi_tipe, disubmit_oleh, status_approval, dibuat_pada)
+             VALUES (?, ?, ?, ?, ?, "revisi", ?, "pending", NOW())',
+            'iisssi',
+            $pengumpulan_id,
+            $nomorVersi,
+            $teksJawaban ?? '',
+            $filePath ?? '',
+            $filePath ? basename($filePath) : '',
+            $akunId
+        );
+
+        if ($hasil < 1) {
+            error_log("[simpanRevisiTugas] Database insert gagal untuk pengumpulan_id=$pengumpulan_id");
+            return false;
+        }
+
+        // Kirim notifikasi ke guru pembuat tugas
+        $tugas = sirey_fetch(sirey_query(
+            'SELECT t.judul, t.pembuat_id FROM tugas_rayhanRP t WHERE t.tugas_id = ?',
+            'i', $tugasId
+        ));
+
+        if ($tugas) {
+            $guru = sirey_fetch(sirey_query(
+                'SELECT at.telegram_chat_id FROM akun_telegram_rayhanRP at WHERE at.akun_id = ?',
+                'i', (int)$tugas['pembuat_id']
             ));
 
-            $pesan = "📝 *Revisi Tugas Disubmit*\n\n"
-                   . "*{$tugas['judul']}* (v{$nomorVersi})\n"
-                   . "👤 Dari: {$siswa['nama_lengkap']}\n"
-                   . "⏰ Waktu: " . date('d/m/Y H:i') . "\n\n"
-                   . "Silakan tinjau revisi tersebut.";
+            if ($guru && !empty($guru['telegram_chat_id'])) {
+                $siswa = sirey_fetch(sirey_query(
+                    'SELECT nama_lengkap FROM akun_rayhanRP WHERE akun_id = ?',
+                    'i', $akunId
+                ));
 
-            sendMsg((int)$guru['telegram_chat_id'], $pesan);
+                $pesan = "📝 *Revisi Tugas Disubmit*\n\n"
+                       . "*{$tugas['judul']}* (v{$nomorVersi})\n"
+                       . "👤 Dari: {$siswa['nama_lengkap']}\n"
+                       . "⏰ Waktu: " . date('d/m/Y H:i') . "\n\n"
+                       . "Silakan tinjau revisi tersebut.";
+
+                sendMsg((int)$guru['telegram_chat_id'], $pesan);
+            }
         }
-    }
 
-    return true;
+        return true;
+    } catch (Exception $e) {
+        error_log("[simpanRevisiTugas] Exception: " . $e->getMessage());
+        return false;
+    }
 }
 
 /**

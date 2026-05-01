@@ -137,7 +137,7 @@ function handleMenu(string $text, int $chat, array $user): bool {
             return true;
         }
         $keyboard = array_chunk(array_map(fn($m) => $m['nama'], $mapelList), 2);
-        $keyboard[] = ['🔙 Kembali'];
+        $keyboard[] = ['🔙 Kembali ke Menu'];
 
         setState($chat, ['step' => 'tugas_pilih_mapel']);
         sendMsg($chat, "✏️ *Buat Tugas Baru*\n\nPilih *mata pelajaran*:", $keyboard);
@@ -153,7 +153,7 @@ function handleMenu(string $text, int $chat, array $user): bool {
         }
 
         $keyboard = array_chunk(array_map(fn($k) => $k['nama_grup'], $kelasList), 2);
-        $keyboard[] = ['🔙 Kembali'];
+        $keyboard[] = ['🔙 Kembali ke Menu'];
 
         setState($chat, ['step' => 'pengumuman_pilih_kelas']);
         sendMsg($chat, "📢 *Kirim Pengumuman*\n\nPilih *kelas* penerima:", $keyboard);
@@ -222,7 +222,7 @@ function handleMenu(string $text, int $chat, array $user): bool {
                 $keyboardGrouped[count($keyboardGrouped) - 1][] = $row[0];
             }
         }
-        $keyboardGrouped[] = ['🔙 Kembali'];
+        $keyboardGrouped[] = ['🔙 Kembali ke Menu'];
 
         setState($chat, ['step' => 'analisis_tugas_pilih', 'tugasList' => $tugasList]);
         sendMsg($chat, $pesan, $keyboardGrouped);
@@ -260,7 +260,7 @@ function handleMenu(string $text, int $chat, array $user): bool {
                 $keyboardGrouped[count($keyboardGrouped) - 1][] = $row[0];
             }
         }
-        $keyboardGrouped[] = ['🔙 Kembali'];
+        $keyboardGrouped[] = ['🔙 Kembali ke Menu'];
 
         setState($chat, [
             'step'          => 'nilai_pilih_tugas',
@@ -357,7 +357,7 @@ function handleMenu(string $text, int $chat, array $user): bool {
                 $keyboard[count($keyboard) - 1][] = (string)$no;
             }
         }
-        $keyboard[] = ['🔙 Kembali'];
+        $keyboard[] = ['🔙 Kembali ke Menu'];
 
         setState($chat, [
             'step'          => 'kumpul_pilih_tugas',
@@ -384,7 +384,7 @@ function handleMenu(string $text, int $chat, array $user): bool {
     }
 
     // ── KEMBALI ke menu ─────────────────────────────────────────────────────
-    if ($text === '🔙 Kembali') {
+    if ($text === '🔙 Kembali ke Menu') {
         setState($chat, [
             'step'       => 'menu',
             'user_cache' => [

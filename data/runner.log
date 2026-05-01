@@ -1594,3 +1594,641 @@
 [2026-04-30 15:11:07]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=15:11 cek_deadline=2026-05-01
 [2026-04-30 15:11:07]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
 [2026-04-30 15:11:07]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=15:11 — terkirim=0 skip=0
+[2026-05-01 02:07:28] ▶ Runner dimulai (PID: 18564)
+[2026-05-01 02:07:28] 📅 Hari baru: 2026-05-01
+[2026-05-01 02:07:28] ━━━ 2026-05-01 02:07 ━━━
+[2026-05-01 02:07:28]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=02:07 hari=Jumat
+[2026-05-01 02:07:28]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 02:07:28]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=02:07 — terkirim=0 skip=0
+[2026-05-01 02:07:28]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=02:07 cek_deadline=2026-05-02
+[2026-05-01 02:07:28]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 02:07:28]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=02:07 — terkirim=0 skip=0
+[2026-05-01 02:08:28] ━━━ 2026-05-01 02:08 ━━━
+[2026-05-01 02:08:29]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=02:08 hari=Jumat
+[2026-05-01 02:08:29]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 02:08:29]   [notifikasi_jadwal.php] [notif_jadwal] Proses uid=34 (RAYHAN RIZKY PRATAMA) jam_notif=02:08
+[2026-05-01 02:08:29]   [notifikasi_jadwal.php] [notif_jadwal] uid=34 jadwal hari Jumat: 0 item
+[2026-05-01 02:08:29]   [notifikasi_jadwal.php] [notif_jadwal] ✅ Terkirim → uid=34 (RAYHAN RIZKY PRATAMA)
+[2026-05-01 02:08:29]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=02:08 — terkirim=1 skip=0
+[2026-05-01 02:08:29]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=02:08 cek_deadline=2026-05-02
+[2026-05-01 02:08:29]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 02:08:29]   [notifikasi_tugas.php] [notif_tugas] Proses uid=34 (RAYHAN RIZKY PRATAMA) jam_notif=02:08
+[2026-05-01 02:08:29]   [notifikasi_tugas.php] [notif_tugas] uid=34 tugas deadline besok: 0
+[2026-05-01 02:08:29]   [notifikasi_tugas.php] [notif_tugas] ⏭ Skip uid=34 — tidak ada tugas deadline besok
+[2026-05-01 02:08:29]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=02:08 — terkirim=0 skip=0
+[2026-05-01 10:51:21] ▶ Runner dimulai (PID: 4592)
+[2026-05-01 10:51:21] 📅 Hari baru: 2026-05-01
+[2026-05-01 10:51:21] ━━━ 2026-05-01 10:51 ━━━
+[2026-05-01 10:51:21]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=10:51 hari=Jumat
+[2026-05-01 10:51:21]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 10:51:21]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=10:51 — terkirim=0 skip=0
+[2026-05-01 10:51:21]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=10:51 cek_deadline=2026-05-02
+[2026-05-01 10:51:21]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 10:51:21]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=10:51 — terkirim=0 skip=0
+[2026-05-01 10:52:22] ━━━ 2026-05-01 10:52 ━━━
+[2026-05-01 10:52:22]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=10:52 hari=Jumat
+[2026-05-01 10:52:22]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 10:52:22]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=10:52 — terkirim=0 skip=0
+[2026-05-01 10:52:22]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=10:52 cek_deadline=2026-05-02
+[2026-05-01 10:52:22]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 10:52:22]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=10:52 — terkirim=0 skip=0
+[2026-05-01 10:53:22] ━━━ 2026-05-01 10:53 ━━━
+[2026-05-01 10:53:22]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=10:53 hari=Jumat
+[2026-05-01 10:53:22]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 10:53:22]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=10:53 — terkirim=0 skip=0
+[2026-05-01 10:53:22]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=10:53 cek_deadline=2026-05-02
+[2026-05-01 10:53:22]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 10:53:22]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=10:53 — terkirim=0 skip=0
+[2026-05-01 10:54:22] ━━━ 2026-05-01 10:54 ━━━
+[2026-05-01 10:54:22]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=10:54 hari=Jumat
+[2026-05-01 10:54:22]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 10:54:22]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=10:54 — terkirim=0 skip=0
+[2026-05-01 10:54:23]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=10:54 cek_deadline=2026-05-02
+[2026-05-01 10:54:23]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 10:54:23]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=10:54 — terkirim=0 skip=0
+[2026-05-01 10:55:23] ━━━ 2026-05-01 10:55 ━━━
+[2026-05-01 10:55:23]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=10:55 hari=Jumat
+[2026-05-01 10:55:23]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 10:55:23]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=10:55 — terkirim=0 skip=0
+[2026-05-01 10:55:23]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=10:55 cek_deadline=2026-05-02
+[2026-05-01 10:55:23]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 10:55:23]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=10:55 — terkirim=0 skip=0
+[2026-05-01 10:56:23] ━━━ 2026-05-01 10:56 ━━━
+[2026-05-01 10:56:23]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=10:56 hari=Jumat
+[2026-05-01 10:56:23]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 10:56:23]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=10:56 — terkirim=0 skip=0
+[2026-05-01 10:56:23]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=10:56 cek_deadline=2026-05-02
+[2026-05-01 10:56:23]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 10:56:23]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=10:56 — terkirim=0 skip=0
+[2026-05-01 10:57:24] ━━━ 2026-05-01 10:57 ━━━
+[2026-05-01 10:57:24]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=10:57 hari=Jumat
+[2026-05-01 10:57:24]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 10:57:24]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=10:57 — terkirim=0 skip=0
+[2026-05-01 10:57:24]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=10:57 cek_deadline=2026-05-02
+[2026-05-01 10:57:24]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 10:57:24]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=10:57 — terkirim=0 skip=0
+[2026-05-01 10:58:24] ━━━ 2026-05-01 10:58 ━━━
+[2026-05-01 10:58:24]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=10:58 hari=Jumat
+[2026-05-01 10:58:24]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 10:58:24]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=10:58 — terkirim=0 skip=0
+[2026-05-01 10:58:24]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=10:58 cek_deadline=2026-05-02
+[2026-05-01 10:58:24]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 10:58:24]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=10:58 — terkirim=0 skip=0
+[2026-05-01 10:59:24] ━━━ 2026-05-01 10:59 ━━━
+[2026-05-01 10:59:24]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=10:59 hari=Jumat
+[2026-05-01 10:59:24]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 10:59:24]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=10:59 — terkirim=0 skip=0
+[2026-05-01 10:59:25]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=10:59 cek_deadline=2026-05-02
+[2026-05-01 10:59:25]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 10:59:25]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=10:59 — terkirim=0 skip=0
+[2026-05-01 11:00:25] ━━━ 2026-05-01 11:00 ━━━
+[2026-05-01 11:00:27]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:00 hari=Jumat
+[2026-05-01 11:00:27]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:00:27]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:00 — terkirim=0 skip=0
+[2026-05-01 11:00:27]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:00 cek_deadline=2026-05-02
+[2026-05-01 11:00:27]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:00:27]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:00 — terkirim=0 skip=0
+[2026-05-01 11:01:27] ━━━ 2026-05-01 11:01 ━━━
+[2026-05-01 11:01:27]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:01 hari=Jumat
+[2026-05-01 11:01:27]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:01:27]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:01 — terkirim=0 skip=0
+[2026-05-01 11:01:27]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:01 cek_deadline=2026-05-02
+[2026-05-01 11:01:27]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:01:27]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:01 — terkirim=0 skip=0
+[2026-05-01 11:02:27] ━━━ 2026-05-01 11:02 ━━━
+[2026-05-01 11:02:27]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:02 hari=Jumat
+[2026-05-01 11:02:27]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:02:27]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:02 — terkirim=0 skip=0
+[2026-05-01 11:02:28]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:02 cek_deadline=2026-05-02
+[2026-05-01 11:02:28]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:02:28]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:02 — terkirim=0 skip=0
+[2026-05-01 11:03:28] ━━━ 2026-05-01 11:03 ━━━
+[2026-05-01 11:03:28]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:03 hari=Jumat
+[2026-05-01 11:03:28]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:03:28]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:03 — terkirim=0 skip=0
+[2026-05-01 11:03:28]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:03 cek_deadline=2026-05-02
+[2026-05-01 11:03:28]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:03:28]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:03 — terkirim=0 skip=0
+[2026-05-01 11:04:28] ━━━ 2026-05-01 11:04 ━━━
+[2026-05-01 11:04:28]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:04 hari=Jumat
+[2026-05-01 11:04:28]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:04:28]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:04 — terkirim=0 skip=0
+[2026-05-01 11:04:28]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:04 cek_deadline=2026-05-02
+[2026-05-01 11:04:28]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:04:28]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:04 — terkirim=0 skip=0
+[2026-05-01 11:05:28] ━━━ 2026-05-01 11:05 ━━━
+[2026-05-01 11:05:28]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:05 hari=Jumat
+[2026-05-01 11:05:28]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:05:28]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:05 — terkirim=0 skip=0
+[2026-05-01 11:05:29]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:05 cek_deadline=2026-05-02
+[2026-05-01 11:05:29]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:05:29]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:05 — terkirim=0 skip=0
+[2026-05-01 11:06:29] ━━━ 2026-05-01 11:06 ━━━
+[2026-05-01 11:06:29]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:06 hari=Jumat
+[2026-05-01 11:06:29]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:06:29]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:06 — terkirim=0 skip=0
+[2026-05-01 11:06:29]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:06 cek_deadline=2026-05-02
+[2026-05-01 11:06:29]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:06:29]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:06 — terkirim=0 skip=0
+[2026-05-01 11:07:29] ━━━ 2026-05-01 11:07 ━━━
+[2026-05-01 11:07:29]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:07 hari=Jumat
+[2026-05-01 11:07:29]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:07:29]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:07 — terkirim=0 skip=0
+[2026-05-01 11:07:29]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:07 cek_deadline=2026-05-02
+[2026-05-01 11:07:29]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:07:29]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:07 — terkirim=0 skip=0
+[2026-05-01 11:08:29] ━━━ 2026-05-01 11:08 ━━━
+[2026-05-01 11:08:31]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:08 hari=Jumat
+[2026-05-01 11:08:31]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:08:31]   [notifikasi_jadwal.php] [notif_jadwal] Proses uid=34 (RAYHAN RIZKY PRATAMA) jam_notif=11:08
+[2026-05-01 11:08:31]   [notifikasi_jadwal.php] [notif_jadwal] uid=34 jadwal hari Jumat: 1 item
+[2026-05-01 11:08:31]   [notifikasi_jadwal.php] [notif_jadwal] ✅ Terkirim → uid=34 (RAYHAN RIZKY PRATAMA)
+[2026-05-01 11:08:31]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:08 — terkirim=1 skip=0
+[2026-05-01 11:08:32]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:08 cek_deadline=2026-05-02
+[2026-05-01 11:08:32]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:08:32]   [notifikasi_tugas.php] [notif_tugas] Proses uid=34 (RAYHAN RIZKY PRATAMA) jam_notif=11:08
+[2026-05-01 11:08:32]   [notifikasi_tugas.php] [notif_tugas] uid=34 tugas deadline besok: 1
+[2026-05-01 11:08:32]   [notifikasi_tugas.php] [notif_tugas] ✅ Terkirim → uid=34 (RAYHAN RIZKY PRATAMA)
+[2026-05-01 11:08:32]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:08 — terkirim=1 skip=0
+[2026-05-01 11:09:02] ━━━ 2026-05-01 11:09 ━━━
+[2026-05-01 11:09:02]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:09 hari=Jumat
+[2026-05-01 11:09:02]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:09:02]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:09 — terkirim=0 skip=0
+[2026-05-01 11:09:03]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:09 cek_deadline=2026-05-02
+[2026-05-01 11:09:03]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:09:03]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:09 — terkirim=0 skip=0
+[2026-05-01 11:10:03] ━━━ 2026-05-01 11:10 ━━━
+[2026-05-01 11:10:03]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:10 hari=Jumat
+[2026-05-01 11:10:03]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:10:03]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:10 — terkirim=0 skip=0
+[2026-05-01 11:10:03]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:10 cek_deadline=2026-05-02
+[2026-05-01 11:10:03]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:10:03]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:10 — terkirim=0 skip=0
+[2026-05-01 11:11:03] ━━━ 2026-05-01 11:11 ━━━
+[2026-05-01 11:11:03]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:11 hari=Jumat
+[2026-05-01 11:11:03]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:11:03]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:11 — terkirim=0 skip=0
+[2026-05-01 11:11:03]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:11 cek_deadline=2026-05-02
+[2026-05-01 11:11:03]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:11:03]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:11 — terkirim=0 skip=0
+[2026-05-01 11:12:03] ━━━ 2026-05-01 11:12 ━━━
+[2026-05-01 11:12:04]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:12 hari=Jumat
+[2026-05-01 11:12:04]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:12:04]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:12 — terkirim=0 skip=0
+[2026-05-01 11:12:04]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:12 cek_deadline=2026-05-02
+[2026-05-01 11:12:04]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:12:04]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:12 — terkirim=0 skip=0
+[2026-05-01 11:13:04] ━━━ 2026-05-01 11:13 ━━━
+[2026-05-01 11:13:04]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:13 hari=Jumat
+[2026-05-01 11:13:04]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:13:04]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:13 — terkirim=0 skip=0
+[2026-05-01 11:13:04]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:13 cek_deadline=2026-05-02
+[2026-05-01 11:13:04]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:13:04]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:13 — terkirim=0 skip=0
+[2026-05-01 11:14:04] ━━━ 2026-05-01 11:14 ━━━
+[2026-05-01 11:14:05]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:14 hari=Jumat
+[2026-05-01 11:14:05]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:14:05]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:14 — terkirim=0 skip=0
+[2026-05-01 11:14:05]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:14 cek_deadline=2026-05-02
+[2026-05-01 11:14:05]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:14:05]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:14 — terkirim=0 skip=0
+[2026-05-01 11:15:05] ━━━ 2026-05-01 11:15 ━━━
+[2026-05-01 11:15:06]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:15 hari=Jumat
+[2026-05-01 11:15:06]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:15:06]   [notifikasi_jadwal.php] [notif_jadwal] Proses uid=34 (RAYHAN RIZKY PRATAMA) jam_notif=11:15
+[2026-05-01 11:15:06]   [notifikasi_jadwal.php] [notif_jadwal] uid=34 jadwal hari Jumat: 1 item
+[2026-05-01 11:15:06]   [notifikasi_jadwal.php] [notif_jadwal] ✅ Terkirim → uid=34 (RAYHAN RIZKY PRATAMA)
+[2026-05-01 11:15:06]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:15 — terkirim=1 skip=0
+[2026-05-01 11:15:08]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:15 cek_deadline=2026-05-02
+[2026-05-01 11:15:08]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:15:08]   [notifikasi_tugas.php] [notif_tugas] Proses uid=34 (RAYHAN RIZKY PRATAMA) jam_notif=11:15
+[2026-05-01 11:15:08]   [notifikasi_tugas.php] [notif_tugas] uid=34 tugas deadline besok: 1
+[2026-05-01 11:15:08]   [notifikasi_tugas.php] [notif_tugas] ✅ Terkirim → uid=34 (RAYHAN RIZKY PRATAMA)
+[2026-05-01 11:15:08]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:15 — terkirim=1 skip=0
+[2026-05-01 11:16:08] ━━━ 2026-05-01 11:16 ━━━
+[2026-05-01 11:16:08]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:16 hari=Jumat
+[2026-05-01 11:16:08]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:16:08]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:16 — terkirim=0 skip=0
+[2026-05-01 11:16:08]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:16 cek_deadline=2026-05-02
+[2026-05-01 11:16:08]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:16:08]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:16 — terkirim=0 skip=0
+[2026-05-01 11:17:08] ━━━ 2026-05-01 11:17 ━━━
+[2026-05-01 11:17:10]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:17 hari=Jumat
+[2026-05-01 11:17:10]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:17:10]   [notifikasi_jadwal.php] [notif_jadwal] Proses uid=32 (RAHMA KHOYRUL HAWA) jam_notif=11:17
+[2026-05-01 11:17:10]   [notifikasi_jadwal.php] [notif_jadwal] uid=32 jadwal hari Jumat: 1 item
+[2026-05-01 11:17:10]   [notifikasi_jadwal.php] [notif_jadwal] ✅ Terkirim → uid=32 (RAHMA KHOYRUL HAWA)
+[2026-05-01 11:17:10]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:17 — terkirim=1 skip=0
+[2026-05-01 11:17:11]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:17 cek_deadline=2026-05-02
+[2026-05-01 11:17:11]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:17:11]   [notifikasi_tugas.php] [notif_tugas] Proses uid=32 (RAHMA KHOYRUL HAWA) jam_notif=11:17
+[2026-05-01 11:17:11]   [notifikasi_tugas.php] [notif_tugas] uid=32 tugas deadline besok: 2
+[2026-05-01 11:17:11]   [notifikasi_tugas.php] [notif_tugas] ✅ Terkirim → uid=32 (RAHMA KHOYRUL HAWA)
+[2026-05-01 11:17:11]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:17 — terkirim=1 skip=0
+[2026-05-01 11:18:11] ━━━ 2026-05-01 11:18 ━━━
+[2026-05-01 11:18:11]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:18 hari=Jumat
+[2026-05-01 11:18:11]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:18:11]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:18 — terkirim=0 skip=0
+[2026-05-01 11:18:11]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:18 cek_deadline=2026-05-02
+[2026-05-01 11:18:11]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:18:11]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:18 — terkirim=0 skip=0
+[2026-05-01 11:19:12] ━━━ 2026-05-01 11:19 ━━━
+[2026-05-01 11:19:12]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:19 hari=Jumat
+[2026-05-01 11:19:12]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:19:12]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:19 — terkirim=0 skip=0
+[2026-05-01 11:19:12]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:19 cek_deadline=2026-05-02
+[2026-05-01 11:19:12]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:19:12]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:19 — terkirim=0 skip=0
+[2026-05-01 11:20:12] ━━━ 2026-05-01 11:20 ━━━
+[2026-05-01 11:20:12]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:20 hari=Jumat
+[2026-05-01 11:20:12]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:20:12]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:20 — terkirim=0 skip=0
+[2026-05-01 11:20:12]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:20 cek_deadline=2026-05-02
+[2026-05-01 11:20:12]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:20:12]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:20 — terkirim=0 skip=0
+[2026-05-01 11:21:12] ━━━ 2026-05-01 11:21 ━━━
+[2026-05-01 11:21:12]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:21 hari=Jumat
+[2026-05-01 11:21:12]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:21:12]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:21 — terkirim=0 skip=0
+[2026-05-01 11:21:13]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:21 cek_deadline=2026-05-02
+[2026-05-01 11:21:13]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:21:13]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:21 — terkirim=0 skip=0
+[2026-05-01 11:22:13] ━━━ 2026-05-01 11:22 ━━━
+[2026-05-01 11:22:13]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:22 hari=Jumat
+[2026-05-01 11:22:13]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:22:13]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:22 — terkirim=0 skip=0
+[2026-05-01 11:22:13]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:22 cek_deadline=2026-05-02
+[2026-05-01 11:22:13]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:22:13]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:22 — terkirim=0 skip=0
+[2026-05-01 11:23:13] ━━━ 2026-05-01 11:23 ━━━
+[2026-05-01 11:23:13]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:23 hari=Jumat
+[2026-05-01 11:23:13]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:23:13]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:23 — terkirim=0 skip=0
+[2026-05-01 11:23:13]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:23 cek_deadline=2026-05-02
+[2026-05-01 11:23:13]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:23:13]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:23 — terkirim=0 skip=0
+[2026-05-01 11:24:13] ━━━ 2026-05-01 11:24 ━━━
+[2026-05-01 11:24:14]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:24 hari=Jumat
+[2026-05-01 11:24:14]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:24:14]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:24 — terkirim=0 skip=0
+[2026-05-01 11:24:14]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:24 cek_deadline=2026-05-02
+[2026-05-01 11:24:14]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:24:14]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:24 — terkirim=0 skip=0
+[2026-05-01 11:25:14] ━━━ 2026-05-01 11:25 ━━━
+[2026-05-01 11:25:14]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:25 hari=Jumat
+[2026-05-01 11:25:14]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:25:14]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:25 — terkirim=0 skip=0
+[2026-05-01 11:25:14]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:25 cek_deadline=2026-05-02
+[2026-05-01 11:25:14]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:25:14]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:25 — terkirim=0 skip=0
+[2026-05-01 11:26:14] ━━━ 2026-05-01 11:26 ━━━
+[2026-05-01 11:26:15]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:26 hari=Jumat
+[2026-05-01 11:26:15]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:26:15]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:26 — terkirim=0 skip=0
+[2026-05-01 11:26:15]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:26 cek_deadline=2026-05-02
+[2026-05-01 11:26:15]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:26:15]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:26 — terkirim=0 skip=0
+[2026-05-01 11:27:15] ━━━ 2026-05-01 11:27 ━━━
+[2026-05-01 11:27:15]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:27 hari=Jumat
+[2026-05-01 11:27:15]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:27:15]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:27 — terkirim=0 skip=0
+[2026-05-01 11:27:15]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:27 cek_deadline=2026-05-02
+[2026-05-01 11:27:15]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:27:15]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:27 — terkirim=0 skip=0
+[2026-05-01 11:28:15] ━━━ 2026-05-01 11:28 ━━━
+[2026-05-01 11:28:16]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:28 hari=Jumat
+[2026-05-01 11:28:16]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:28:16]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:28 — terkirim=0 skip=0
+[2026-05-01 11:28:16]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:28 cek_deadline=2026-05-02
+[2026-05-01 11:28:16]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:28:16]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:28 — terkirim=0 skip=0
+[2026-05-01 11:29:16] ━━━ 2026-05-01 11:29 ━━━
+[2026-05-01 11:29:16]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:29 hari=Jumat
+[2026-05-01 11:29:16]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:29:16]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:29 — terkirim=0 skip=0
+[2026-05-01 11:29:16]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:29 cek_deadline=2026-05-02
+[2026-05-01 11:29:16]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:29:16]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:29 — terkirim=0 skip=0
+[2026-05-01 11:30:16] ━━━ 2026-05-01 11:30 ━━━
+[2026-05-01 11:30:16]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:30 hari=Jumat
+[2026-05-01 11:30:16]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:30:16]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:30 — terkirim=0 skip=0
+[2026-05-01 11:30:17]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:30 cek_deadline=2026-05-02
+[2026-05-01 11:30:17]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:30:17]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:30 — terkirim=0 skip=0
+[2026-05-01 11:31:17] ━━━ 2026-05-01 11:31 ━━━
+[2026-05-01 11:31:17]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:31 hari=Jumat
+[2026-05-01 11:31:17]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:31:17]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:31 — terkirim=0 skip=0
+[2026-05-01 11:31:17]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:31 cek_deadline=2026-05-02
+[2026-05-01 11:31:17]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:31:17]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:31 — terkirim=0 skip=0
+[2026-05-01 11:32:17] ━━━ 2026-05-01 11:32 ━━━
+[2026-05-01 11:32:17]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:32 hari=Jumat
+[2026-05-01 11:32:17]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:32:17]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:32 — terkirim=0 skip=0
+[2026-05-01 11:32:17]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:32 cek_deadline=2026-05-02
+[2026-05-01 11:32:17]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:32:17]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:32 — terkirim=0 skip=0
+[2026-05-01 11:33:17] ━━━ 2026-05-01 11:33 ━━━
+[2026-05-01 11:33:18]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:33 hari=Jumat
+[2026-05-01 11:33:18]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:33:18]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:33 — terkirim=0 skip=0
+[2026-05-01 11:33:18]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:33 cek_deadline=2026-05-02
+[2026-05-01 11:33:18]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:33:18]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:33 — terkirim=0 skip=0
+[2026-05-01 11:34:18] ━━━ 2026-05-01 11:34 ━━━
+[2026-05-01 11:34:18]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:34 hari=Jumat
+[2026-05-01 11:34:18]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:34:18]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:34 — terkirim=0 skip=0
+[2026-05-01 11:34:18]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:34 cek_deadline=2026-05-02
+[2026-05-01 11:34:18]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:34:18]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:34 — terkirim=0 skip=0
+[2026-05-01 11:35:18] ━━━ 2026-05-01 11:35 ━━━
+[2026-05-01 11:35:19]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:35 hari=Jumat
+[2026-05-01 11:35:19]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:35:19]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:35 — terkirim=0 skip=0
+[2026-05-01 11:35:19]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:35 cek_deadline=2026-05-02
+[2026-05-01 11:35:19]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:35:19]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:35 — terkirim=0 skip=0
+[2026-05-01 11:36:19] ━━━ 2026-05-01 11:36 ━━━
+[2026-05-01 11:36:19]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:36 hari=Jumat
+[2026-05-01 11:36:19]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:36:19]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:36 — terkirim=0 skip=0
+[2026-05-01 11:36:19]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:36 cek_deadline=2026-05-02
+[2026-05-01 11:36:19]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:36:19]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:36 — terkirim=0 skip=0
+[2026-05-01 11:37:19] ━━━ 2026-05-01 11:37 ━━━
+[2026-05-01 11:37:20]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:37 hari=Jumat
+[2026-05-01 11:37:20]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:37:20]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:37 — terkirim=0 skip=0
+[2026-05-01 11:37:20]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:37 cek_deadline=2026-05-02
+[2026-05-01 11:37:20]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:37:20]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:37 — terkirim=0 skip=0
+[2026-05-01 11:38:20] ━━━ 2026-05-01 11:38 ━━━
+[2026-05-01 11:38:20]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:38 hari=Jumat
+[2026-05-01 11:38:20]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:38:20]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:38 — terkirim=0 skip=0
+[2026-05-01 11:38:20]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:38 cek_deadline=2026-05-02
+[2026-05-01 11:38:20]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:38:20]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:38 — terkirim=0 skip=0
+[2026-05-01 11:39:20] ━━━ 2026-05-01 11:39 ━━━
+[2026-05-01 11:39:21]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:39 hari=Jumat
+[2026-05-01 11:39:21]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:39:21]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:39 — terkirim=0 skip=0
+[2026-05-01 11:39:21]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:39 cek_deadline=2026-05-02
+[2026-05-01 11:39:21]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:39:21]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:39 — terkirim=0 skip=0
+[2026-05-01 11:40:21] ━━━ 2026-05-01 11:40 ━━━
+[2026-05-01 11:40:21]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:40 hari=Jumat
+[2026-05-01 11:40:21]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:40:21]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:40 — terkirim=0 skip=0
+[2026-05-01 11:40:21]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:40 cek_deadline=2026-05-02
+[2026-05-01 11:40:21]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:40:21]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:40 — terkirim=0 skip=0
+[2026-05-01 11:41:21] ━━━ 2026-05-01 11:41 ━━━
+[2026-05-01 11:41:22]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:41 hari=Jumat
+[2026-05-01 11:41:22]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:41:22]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:41 — terkirim=0 skip=0
+[2026-05-01 11:41:22]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:41 cek_deadline=2026-05-02
+[2026-05-01 11:41:22]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:41:22]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:41 — terkirim=0 skip=0
+[2026-05-01 11:42:22] ━━━ 2026-05-01 11:42 ━━━
+[2026-05-01 11:42:22]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:42 hari=Jumat
+[2026-05-01 11:42:22]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:42:22]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:42 — terkirim=0 skip=0
+[2026-05-01 11:42:22]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:42 cek_deadline=2026-05-02
+[2026-05-01 11:42:22]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:42:22]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:42 — terkirim=0 skip=0
+[2026-05-01 11:43:22] ━━━ 2026-05-01 11:43 ━━━
+[2026-05-01 11:43:23]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:43 hari=Jumat
+[2026-05-01 11:43:23]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:43:23]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:43 — terkirim=0 skip=0
+[2026-05-01 11:43:23]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:43 cek_deadline=2026-05-02
+[2026-05-01 11:43:23]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:43:23]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:43 — terkirim=0 skip=0
+[2026-05-01 11:44:23] ━━━ 2026-05-01 11:44 ━━━
+[2026-05-01 11:44:23]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:44 hari=Jumat
+[2026-05-01 11:44:23]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:44:23]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:44 — terkirim=0 skip=0
+[2026-05-01 11:44:23]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:44 cek_deadline=2026-05-02
+[2026-05-01 11:44:23]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:44:23]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:44 — terkirim=0 skip=0
+[2026-05-01 11:45:23] ━━━ 2026-05-01 11:45 ━━━
+[2026-05-01 11:45:24]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=11:45 hari=Jumat
+[2026-05-01 11:45:24]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 11:45:24]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=11:45 — terkirim=0 skip=0
+[2026-05-01 11:45:24]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=11:45 cek_deadline=2026-05-02
+[2026-05-01 11:45:24]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 11:45:24]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=11:45 — terkirim=0 skip=0
+[2026-05-01 12:31:59] ▶ Runner dimulai (PID: 19008)
+[2026-05-01 12:31:59] 📅 Hari baru: 2026-05-01
+[2026-05-01 12:31:59] ━━━ 2026-05-01 12:31 ━━━
+[2026-05-01 12:31:59]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:31 hari=Jumat
+[2026-05-01 12:31:59]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:31:59]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:31 — terkirim=0 skip=0
+[2026-05-01 12:32:00]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:32 cek_deadline=2026-05-02
+[2026-05-01 12:32:00]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:32:00]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:32 — terkirim=0 skip=0
+[2026-05-01 12:32:30] ━━━ 2026-05-01 12:32 ━━━
+[2026-05-01 12:32:30]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:32 hari=Jumat
+[2026-05-01 12:32:30]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:32:30]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:32 — terkirim=0 skip=0
+[2026-05-01 12:32:30]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:32 cek_deadline=2026-05-02
+[2026-05-01 12:32:30]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:32:30]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:32 — terkirim=0 skip=0
+[2026-05-01 12:33:00] ━━━ 2026-05-01 12:33 ━━━
+[2026-05-01 12:33:00]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:33 hari=Jumat
+[2026-05-01 12:33:00]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:33:00]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:33 — terkirim=0 skip=0
+[2026-05-01 12:33:00]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:33 cek_deadline=2026-05-02
+[2026-05-01 12:33:00]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:33:00]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:33 — terkirim=0 skip=0
+[2026-05-01 12:34:00] ━━━ 2026-05-01 12:34 ━━━
+[2026-05-01 12:34:01]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:34 hari=Jumat
+[2026-05-01 12:34:01]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:34:01]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:34 — terkirim=0 skip=0
+[2026-05-01 12:34:01]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:34 cek_deadline=2026-05-02
+[2026-05-01 12:34:01]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:34:01]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:34 — terkirim=0 skip=0
+[2026-05-01 12:35:01] ━━━ 2026-05-01 12:35 ━━━
+[2026-05-01 12:35:01]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:35 hari=Jumat
+[2026-05-01 12:35:01]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:35:01]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:35 — terkirim=0 skip=0
+[2026-05-01 12:35:01]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:35 cek_deadline=2026-05-02
+[2026-05-01 12:35:01]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:35:01]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:35 — terkirim=0 skip=0
+[2026-05-01 12:36:01] ━━━ 2026-05-01 12:36 ━━━
+[2026-05-01 12:36:01]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:36 hari=Jumat
+[2026-05-01 12:36:01]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:36:01]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:36 — terkirim=0 skip=0
+[2026-05-01 12:36:02]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:36 cek_deadline=2026-05-02
+[2026-05-01 12:36:02]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:36:02]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:36 — terkirim=0 skip=0
+[2026-05-01 12:37:02] ━━━ 2026-05-01 12:37 ━━━
+[2026-05-01 12:37:02]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:37 hari=Jumat
+[2026-05-01 12:37:02]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:37:02]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:37 — terkirim=0 skip=0
+[2026-05-01 12:37:02]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:37 cek_deadline=2026-05-02
+[2026-05-01 12:37:02]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:37:02]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:37 — terkirim=0 skip=0
+[2026-05-01 12:38:02] ━━━ 2026-05-01 12:38 ━━━
+[2026-05-01 12:38:02]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:38 hari=Jumat
+[2026-05-01 12:38:02]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:38:02]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:38 — terkirim=0 skip=0
+[2026-05-01 12:38:03]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:38 cek_deadline=2026-05-02
+[2026-05-01 12:38:03]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:38:03]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:38 — terkirim=0 skip=0
+[2026-05-01 12:39:03] ━━━ 2026-05-01 12:39 ━━━
+[2026-05-01 12:39:03]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:39 hari=Jumat
+[2026-05-01 12:39:03]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:39:03]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:39 — terkirim=0 skip=0
+[2026-05-01 12:39:03]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:39 cek_deadline=2026-05-02
+[2026-05-01 12:39:03]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:39:03]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:39 — terkirim=0 skip=0
+[2026-05-01 12:40:03] ━━━ 2026-05-01 12:40 ━━━
+[2026-05-01 12:40:03]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:40 hari=Jumat
+[2026-05-01 12:40:03]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:40:03]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:40 — terkirim=0 skip=0
+[2026-05-01 12:40:04]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:40 cek_deadline=2026-05-02
+[2026-05-01 12:40:04]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:40:04]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:40 — terkirim=0 skip=0
+[2026-05-01 12:41:04] ━━━ 2026-05-01 12:41 ━━━
+[2026-05-01 12:41:04]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:41 hari=Jumat
+[2026-05-01 12:41:04]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:41:04]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:41 — terkirim=0 skip=0
+[2026-05-01 12:41:04]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:41 cek_deadline=2026-05-02
+[2026-05-01 12:41:04]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:41:04]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:41 — terkirim=0 skip=0
+[2026-05-01 12:42:04] ━━━ 2026-05-01 12:42 ━━━
+[2026-05-01 12:42:04]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:42 hari=Jumat
+[2026-05-01 12:42:04]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:42:04]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:42 — terkirim=0 skip=0
+[2026-05-01 12:42:04]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:42 cek_deadline=2026-05-02
+[2026-05-01 12:42:04]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:42:04]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:42 — terkirim=0 skip=0
+[2026-05-01 12:43:04] ━━━ 2026-05-01 12:43 ━━━
+[2026-05-01 12:43:05]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:43 hari=Jumat
+[2026-05-01 12:43:05]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:43:05]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:43 — terkirim=0 skip=0
+[2026-05-01 12:43:05]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:43 cek_deadline=2026-05-02
+[2026-05-01 12:43:05]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:43:05]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:43 — terkirim=0 skip=0
+[2026-05-01 12:44:05] ━━━ 2026-05-01 12:44 ━━━
+[2026-05-01 12:44:05]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:44 hari=Jumat
+[2026-05-01 12:44:05]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:44:05]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:44 — terkirim=0 skip=0
+[2026-05-01 12:44:05]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:44 cek_deadline=2026-05-02
+[2026-05-01 12:44:05]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:44:05]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:44 — terkirim=0 skip=0
+[2026-05-01 12:45:05] ━━━ 2026-05-01 12:45 ━━━
+[2026-05-01 12:45:07]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:45 hari=Jumat
+[2026-05-01 12:45:07]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 5
+[2026-05-01 12:45:07]   [notifikasi_jadwal.php] [notif_jadwal] Proses uid=34 (RAYHAN RIZKY PRATAMA) jam_notif=12:45
+[2026-05-01 12:45:07]   [notifikasi_jadwal.php] [notif_jadwal] uid=34 jadwal hari Jumat: 1 item
+[2026-05-01 12:45:07]   [notifikasi_jadwal.php] [notif_jadwal] ✅ Terkirim → uid=34 (RAYHAN RIZKY PRATAMA)
+[2026-05-01 12:45:07]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:45 — terkirim=1 skip=0
+[2026-05-01 12:45:08]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:45 cek_deadline=2026-05-02
+[2026-05-01 12:45:08]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:45:08]   [notifikasi_tugas.php] [notif_tugas] Proses uid=34 (RAYHAN RIZKY PRATAMA) jam_notif=12:45
+[2026-05-01 12:45:08]   [notifikasi_tugas.php] [notif_tugas] uid=34 tugas deadline besok: 1
+[2026-05-01 12:45:08]   [notifikasi_tugas.php] [notif_tugas] ✅ Terkirim → uid=34 (RAYHAN RIZKY PRATAMA)
+[2026-05-01 12:45:08]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:45 — terkirim=1 skip=0
+[2026-05-01 12:46:08] ━━━ 2026-05-01 12:46 ━━━
+[2026-05-01 12:46:08]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:46 hari=Jumat
+[2026-05-01 12:46:08]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:46:08]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:46 — terkirim=0 skip=0
+[2026-05-01 12:46:08]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:46 cek_deadline=2026-05-02
+[2026-05-01 12:46:08]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 3
+[2026-05-01 12:46:08]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:46 — terkirim=0 skip=0
+[2026-05-01 12:47:08] ━━━ 2026-05-01 12:47 ━━━
+[2026-05-01 12:47:08]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:47 hari=Jumat
+[2026-05-01 12:47:08]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 3
+[2026-05-01 12:47:08]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:47 — terkirim=0 skip=0
+[2026-05-01 12:47:09]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:47 cek_deadline=2026-05-02
+[2026-05-01 12:47:09]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 3
+[2026-05-01 12:47:09]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:47 — terkirim=0 skip=0
+[2026-05-01 12:48:09] ━━━ 2026-05-01 12:48 ━━━
+[2026-05-01 12:48:09]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:48 hari=Jumat
+[2026-05-01 12:48:09]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:48:09]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:48 — terkirim=0 skip=0
+[2026-05-01 12:48:09]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:48 cek_deadline=2026-05-02
+[2026-05-01 12:48:09]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:48:09]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:48 — terkirim=0 skip=0
+[2026-05-01 12:49:09] ━━━ 2026-05-01 12:49 ━━━
+[2026-05-01 12:49:09]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:49 hari=Jumat
+[2026-05-01 12:49:09]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:49:09]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:49 — terkirim=0 skip=0
+[2026-05-01 12:49:09]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:49 cek_deadline=2026-05-02
+[2026-05-01 12:49:10]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:49:10]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:49 — terkirim=0 skip=0
+[2026-05-01 12:50:10] ━━━ 2026-05-01 12:50 ━━━
+[2026-05-01 12:50:10]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:50 hari=Jumat
+[2026-05-01 12:50:10]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:50:10]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:50 — terkirim=0 skip=0
+[2026-05-01 12:50:10]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:50 cek_deadline=2026-05-02
+[2026-05-01 12:50:10]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:50:10]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:50 — terkirim=0 skip=0
+[2026-05-01 12:51:10] ━━━ 2026-05-01 12:51 ━━━
+[2026-05-01 12:51:10]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:51 hari=Jumat
+[2026-05-01 12:51:10]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:51:10]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:51 — terkirim=0 skip=0
+[2026-05-01 12:51:10]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:51 cek_deadline=2026-05-02
+[2026-05-01 12:51:10]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:51:10]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:51 — terkirim=0 skip=0
+[2026-05-01 12:52:10] ━━━ 2026-05-01 12:52 ━━━
+[2026-05-01 12:52:10]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:52 hari=Jumat
+[2026-05-01 12:52:10]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:52:10]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:52 — terkirim=0 skip=0
+[2026-05-01 12:52:11]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:52 cek_deadline=2026-05-02
+[2026-05-01 12:52:11]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:52:11]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:52 — terkirim=0 skip=0
+[2026-05-01 12:53:11] ━━━ 2026-05-01 12:53 ━━━
+[2026-05-01 12:53:11]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:53 hari=Jumat
+[2026-05-01 12:53:11]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:53:11]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:53 — terkirim=0 skip=0
+[2026-05-01 12:53:11]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:53 cek_deadline=2026-05-02
+[2026-05-01 12:53:11]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:53:11]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:53 — terkirim=0 skip=0
+[2026-05-01 12:54:11] ━━━ 2026-05-01 12:54 ━━━
+[2026-05-01 12:54:11]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:54 hari=Jumat
+[2026-05-01 12:54:11]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:54:11]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:54 — terkirim=0 skip=0
+[2026-05-01 12:54:12]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:54 cek_deadline=2026-05-02
+[2026-05-01 12:54:12]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:54:12]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:54 — terkirim=0 skip=0
+[2026-05-01 12:55:12] ━━━ 2026-05-01 12:55 ━━━
+[2026-05-01 12:55:12]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:55 hari=Jumat
+[2026-05-01 12:55:12]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:55:12]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:55 — terkirim=0 skip=0
+[2026-05-01 12:55:12]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:55 cek_deadline=2026-05-02
+[2026-05-01 12:55:12]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:55:12]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:55 — terkirim=0 skip=0
+[2026-05-01 12:56:12] ━━━ 2026-05-01 12:56 ━━━
+[2026-05-01 12:56:12]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:56 hari=Jumat
+[2026-05-01 12:56:12]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:56:12]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:56 — terkirim=0 skip=0
+[2026-05-01 12:56:12]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:56 cek_deadline=2026-05-02
+[2026-05-01 12:56:12]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:56:12]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:56 — terkirim=0 skip=0
+[2026-05-01 12:57:13] ━━━ 2026-05-01 12:57 ━━━
+[2026-05-01 12:57:13]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:57 hari=Jumat
+[2026-05-01 12:57:13]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:57:13]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:57 — terkirim=0 skip=0
+[2026-05-01 12:57:13]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:57 cek_deadline=2026-05-02
+[2026-05-01 12:57:13]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:57:13]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:57 — terkirim=0 skip=0
+[2026-05-01 12:58:13] ━━━ 2026-05-01 12:58 ━━━
+[2026-05-01 12:58:13]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:58 hari=Jumat
+[2026-05-01 12:58:13]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:58:13]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:58 — terkirim=0 skip=0
+[2026-05-01 12:58:13]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:58 cek_deadline=2026-05-02
+[2026-05-01 12:58:13]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:58:13]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:58 — terkirim=0 skip=0
+[2026-05-01 12:59:13] ━━━ 2026-05-01 12:59 ━━━
+[2026-05-01 12:59:13]   [notifikasi_jadwal.php] [notif_jadwal] ▶ Dijalankan jam=12:59 hari=Jumat
+[2026-05-01 12:59:13]   [notifikasi_jadwal.php] [notif_jadwal] Total user terdaftar: 4
+[2026-05-01 12:59:13]   [notifikasi_jadwal.php] [notif_jadwal] ✔ Selesai jam=12:59 — terkirim=0 skip=0
+[2026-05-01 12:59:14]   [notifikasi_tugas.php] [notif_tugas] ▶ Dijalankan jam=12:59 cek_deadline=2026-05-02
+[2026-05-01 12:59:14]   [notifikasi_tugas.php] [notif_tugas] Total siswa terdaftar: 4
+[2026-05-01 12:59:14]   [notifikasi_tugas.php] [notif_tugas] ✔ Selesai jam=12:59 — terkirim=0 skip=0

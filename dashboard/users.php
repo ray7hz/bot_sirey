@@ -13,6 +13,7 @@ if (!can('view_users', $data_admin_rayhanrp)) {
 }
 
 $bisa_tulis_rayhanrp = can('create_user', $data_admin_rayhanrp);
+$bisa_lihat_pengguna_rayhanrp = can('view_users', $data_admin_rayhanrp);
 $database_rayhanrp = sirey_getDatabase();
 $pesan_rayhanrp = '';
 $error_rayhanrp = '';
@@ -174,14 +175,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error_rayhanrp = 'Upload file gagal.';
             } else {
                 $hasil_import_rayhanrp = importUsersFromExcel($database_rayhanrp, (string)$file_rayhanrp['tmp_name'], null);
-                if (!empty($hasil_import_rayhanrp['success'])) {
-                    $pesan_rayhanrp = 'Import selesai: ' . (int)($hasil_import_rayhanrp['imported'] ?? 0) . ' berhasil, ' . (int)($hasil_import_rayhanrp['failed'] ?? 0) . ' gagal.';
-                    auditLog($data_admin_rayhanrp['id'], 'import_user_excel', 'akun', null, [
-                        'imported' => (int)($hasil_import_rayhanrp['imported'] ?? 0),
-                        'failed' => (int)($hasil_import_rayhanrp['failed'] ?? 0),
-                    ]);
+                
+                // Cek jika ada parsing error (file invalid, dll)
+                if (isset($hasil_import_rayhanrp['error'])) {
+                    $error_rayhanrp = (string)$hasil_import_rayhanrp['error'];
                 } else {
-                    $error_rayhanrp = (string)($hasil_import_rayhanrp['error'] ?? 'Import gagal.');
+                    // Tampilkan hasil import (berhasil + gagal/dilewati)
+                    $jumlah_berhasil_rayhanrp = (int)($hasil_import_rayhanrp['imported'] ?? 0);
+                    $jumlah_gagal_rayhanrp = (int)($hasil_import_rayhanrp['failed'] ?? 0);
+                    $daftar_error_rayhanrp = $hasil_import_rayhanrp['errors'] ?? [];
+                    
+                    if ($jumlah_berhasil_rayhanrp > 0) {
+                        $pesan_rayhanrp = '✅ Import selesai: ' . $jumlah_berhasil_rayhanrp . ' pengguna berhasil ditambahkan';
+                        if ($jumlah_gagal_rayhanrp > 0) {
+                            $pesan_rayhanrp .= ', ' . $jumlah_gagal_rayhanrp . ' dilewati (sudah ada atau error).';
+                        } else {
+                            $pesan_rayhanrp .= '.';
+                        }
+                    } else {
+                        if ($jumlah_gagal_rayhanrp > 0) {
+                            $pesan_rayhanrp = '⚠️ Semua data dilewati karena sudah ada atau error (' . $jumlah_gagal_rayhanrp . ' baris).';
+                        } else {
+                            $error_rayhanrp = 'File Excel tidak memiliki data yang valid.';
+                        }
+                    }
+                    
+                    // Log audit
+                    auditLog($data_admin_rayhanrp['id'], 'import_user_excel', 'akun', null, [
+                        'imported' => $jumlah_berhasil_rayhanrp,
+                        'failed' => $jumlah_gagal_rayhanrp,
+                    ]);
                 }
             }
         }
@@ -231,7 +254,7 @@ $daftar_log_reset_rayhanrp = sirey_fetchAll(sirey_query(
 
 <div class="page-header">
   <h2>Manajemen Pengguna</h2>
-  <p><?php echo $bisa_tulis_rayhanrp ? 'Kelola akun, grup utama, dan reset password.' : 'Mode baca saja untuk kepala sekolah.'; ?></p>
+  <p><?php echo $bisa_tulis_rayhanrp ? 'Kelola akun, grup utama, dan reset password.' : 'Mode lihat untuk kurikulum.'; ?></p>
 </div>
 
 <?php if ($pesan_rayhanrp !== ''): ?>
@@ -239,6 +262,82 @@ $daftar_log_reset_rayhanrp = sirey_fetchAll(sirey_query(
 <?php endif; ?>
 <?php if ($error_rayhanrp !== ''): ?>
   <div class="alert alert-error"><?php echo htmlspecialchars($error_rayhanrp); ?></div>
+<?php endif; ?>
+
+<?php if ($bisa_tulis_rayhanrp): ?>
+  <div class="card" style="margin-bottom:24px;">
+    <div style="display:flex; border-bottom:2px solid #e2e8f0; gap:2px;">
+      <button type="button" class="subnav-tab active" data-tab="tab-tambah" onclick="switchTab('tab-tambah')" style="flex:1; padding:14px 20px; border:none; background:none; cursor:pointer; font-weight:600; color:#0f172a; border-bottom:3px solid #3b82f6;">
+        ➕ Tambah Manual
+      </button>
+      <button type="button" class="subnav-tab" data-tab="tab-import" onclick="switchTab('tab-import')" style="flex:1; padding:14px 20px; border:none; background:none; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent;">
+        📥 Import Excel
+      </button>
+    </div>
+
+    <div id="tab-tambah" class="subnav-content" style="display:block; padding:20px;">
+      <form method="POST" style="display:grid; grid-template-columns:1fr 1.5fr 1fr 1fr auto; gap:14px; align-items:flex-end;">
+        <input type="hidden" name="act" value="create">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">NIS/NIP</label>
+          <input type="text" name="nis_nip" class="form-control" required>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Nama Lengkap</label>
+          <input type="text" name="nama_lengkap" class="form-control" required>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Role</label>
+          <select name="role" class="form-control">
+            <?php foreach ($role_diizinkan_rayhanrp as $role_option_rayhanrp): ?>
+              <option value="<?php echo $role_option_rayhanrp; ?>"><?php echo htmlspecialchars($role_option_rayhanrp); ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">JK</label>
+          <select name="jenis_kelamin" class="form-control">
+            <option value="">-</option>
+            <option value="L">L</option>
+            <option value="P">P</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Tambah</button>
+      </form>
+    </div>
+
+    <div id="tab-import" class="subnav-content" style="display:none; padding:20px;">
+      <form method="POST" enctype="multipart/form-data" style="display:grid; grid-template-columns:1.4fr auto; gap:14px; align-items:flex-end;">
+        <input type="hidden" name="act" value="import_excel">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">File XLSX (Format: NO | NAMA | NIS | L/P | KELAS)</label>
+          <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
+        </div>
+        <button type="submit" class="btn btn-success">Import</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.subnav-content').forEach(el => el.style.display = 'none');
+      
+      // Remove active state from all tabs
+      document.querySelectorAll('.subnav-tab').forEach(el => {
+        el.style.color = '#64748b';
+        el.style.borderBottomColor = 'transparent';
+      });
+      
+      // Show selected tab
+      document.getElementById(tabName).style.display = 'block';
+      
+      // Add active state to clicked tab
+      event.target.style.color = '#0f172a';
+      event.target.style.borderBottomColor = '#3b82f6';
+    }
+  </script>
+
 <?php endif; ?>
 
 <div class="card" style="margin-bottom:24px;">
@@ -322,51 +421,6 @@ $daftar_log_reset_rayhanrp = sirey_fetchAll(sirey_query(
     </table>
   <?php endif; ?>
 </div>
-
-<?php if ($bisa_tulis_rayhanrp): ?>
-  <div class="card" style="margin-bottom:24px;">
-    <div class="card-header"><h3>Tambah Pengguna Manual</h3></div>
-    <form method="POST" style="display:grid; grid-template-columns:1fr 1.5fr 1fr 1fr auto; gap:14px; align-items:flex-end;">
-      <input type="hidden" name="act" value="create">
-      <div class="form-group" style="margin:0;">
-        <label class="form-label">NIS/NIP</label>
-        <input type="text" name="nis_nip" class="form-control" required>
-      </div>
-      <div class="form-group" style="margin:0;">
-        <label class="form-label">Nama Lengkap</label>
-        <input type="text" name="nama_lengkap" class="form-control" required>
-      </div>
-      <div class="form-group" style="margin:0;">
-        <label class="form-label">Role</label>
-        <select name="role" class="form-control">
-          <?php foreach ($role_diizinkan_rayhanrp as $role_option_rayhanrp): ?>
-            <option value="<?php echo $role_option_rayhanrp; ?>"><?php echo htmlspecialchars($role_option_rayhanrp); ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div class="form-group" style="margin:0;">
-        <label class="form-label">JK</label>
-        <select name="jenis_kelamin" class="form-control">
-          <option value="">-</option>
-          <option value="L">L</option>
-          <option value="P">P</option>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-primary">Tambah</button>
-    </form>
-  </div>
-
-  <div class="card" style="margin-bottom:24px;">
-    <div class="card-header"><h3>Import Excel</h3></div>
-    <form method="POST" enctype="multipart/form-data" style="display:grid; grid-template-columns:1.4fr auto; gap:14px; align-items:flex-end;">
-      <input type="hidden" name="act" value="import_excel">
-      <div class="form-group" style="margin:0;">
-        <label class="form-label">File XLSX</label>
-        <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
-      </div>
-      <button type="submit" class="btn btn-success">Import</button>
-    </form>
-  </div>
 
   <div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center;">
     <div style="background:#fff; padding:28px; border-radius:8px; width:min(560px, 92vw);">
@@ -506,7 +560,6 @@ $daftar_log_reset_rayhanrp = sirey_fetchAll(sirey_query(
       if (event.target === this) closeResetModal();
     });
   </script>
-<?php endif; ?>
 
 <div class="card">
   <div class="card-header"><h3>Riwayat Reset Password</h3></div>

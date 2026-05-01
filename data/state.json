@@ -8,29 +8,6 @@
     "8139576413": {
         "step": "menu"
     },
-    "6048830408": {
-        "step": "menu",
-        "user_cache": {
-            "akun_id": 34,
-            "nama_lengkap": "RAYHAN RIZKY PRATAMA",
-            "role": "siswa",
-            "nis_nip": "10243313"
-        }
-    },
-    "8445211581": {
-        "step": "menu",
-        "user_cache": {
-            "akun_id": 42,
-            "nama_lengkap": "Rd. Irfan Santika Rahman, S Pd., MT.",
-            "role": "guru",
-            "nis_nip": "198408062010011009",
-            "telegram_chat_id": 8445211581,
-            "notif_jadwal": 1,
-            "notif_tugas": 1,
-            "notif_pengumuman": 1,
-            "notif_nilai": 1
-        }
-    },
     "5021279827": {
         "step": "menu",
         "user_cache": {
@@ -47,6 +24,30 @@
             "nama_lengkap": "REVITA GADIS AMIJAYA",
             "role": "siswa",
             "nis_nip": "10243314"
+        }
+    },
+    "8445211581": {
+        "step": "menu",
+        "user_cache": {
+            "akun_id": 219,
+            "nama_lengkap": "Kiki Juniantie, S.Pd",
+            "role": "guru",
+            "nis_nip": "198006052024212012",
+            "telegram_chat_id": 8445211581,
+            "notif_jadwal": 1,
+            "notif_tugas": 1,
+            "notif_pengumuman": 1,
+            "notif_nilai": 1
+        }
+    },
+    "6048830408": {
+        "step": "menu",
+        "session_token": "600ad681e6dcb8e02e66c0bd3c314a9330f3bf0a277081c484e825c36da416e5",
+        "user_cache": {
+            "akun_id": 34,
+            "nama_lengkap": "RAYHAN RIZKY PRATAMA",
+            "role": "siswa",
+            "nis_nip": "10243313"
         }
     }
 }

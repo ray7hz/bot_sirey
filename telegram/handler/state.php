@@ -265,6 +265,21 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
     // ── KUMPULKAN TUGAS - PILIH TUGAS ───────────────────────────────────────
 
     if ($step === 'kumpul_pilih_tugas') {
+        // Handle back button first
+        if ($text === '🔙 Kembali ke Menu') {
+            setState($chat, [
+                'step'       => 'menu',
+                'user_cache' => [
+                    'akun_id'      => $user['akun_id'],
+                    'nama_lengkap' => $user['nama_lengkap'],
+                    'role'         => $user['role'],
+                    'nis_nip'      => $user['nis_nip'],
+                ],
+            ]);
+            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
+            return true;
+        }
+
         // User input nomor tugas
         $no = (int)$text;
         $daftarTugas = $state['daftar_tugas'] ?? [];
@@ -612,7 +627,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
             return true;
         }
 
-        if ($text === '🔙 Kembali Ke Menu') {
+        if ($text === '🔙 Kembali ke Menu') {
             setState($chat, [
                 'step'       => 'menu',
                 'user_cache' => $user,
@@ -798,7 +813,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
     // ── PENGUMUMAN: PILIH KELAS ────────────────────────────────────────────
 
     if ($step === 'pengumuman_pilih_kelas') {
-        if ($text === '🔙 Kembali') {
+        if ($text === '🔙 Kembali ke Menu') {
             setState($chat, [
                 'step'       => 'menu',
                 'user_cache' => $user,
@@ -909,7 +924,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
     // ── ANALISIS TUGAS: PILIH TUGAS ─────────────────────────────────────────
 
     if ($step === 'analisis_tugas_pilih') {
-        if ($text === '🔙 Kembali') {
+        if ($text === '🔙 Kembali ke Menu') {
             setState($chat, [
                 'step'       => 'menu',
                 'user_cache' => $user,
@@ -994,7 +1009,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
 
     // ── NILAI TUGAS: PILIH TUGAS ────────────────────────────────────────────
     if ($step === 'nilai_pilih_tugas') {
-        if ($text === '🔙 Kembali') {
+        if ($text === '🔙 Kembali ke Menu') {
             setState($chat, [
                 'step'       => 'menu',
                 'user_cache' => $user,
@@ -1042,7 +1057,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
                 $keyboard[count($keyboard) - 1][] = (string)$no;
             }
         }
-        $keyboard[] = ['🔙 Kembali'];
+        $keyboard[] = ['🔙 Kembali ke Menu'];
 
         setState($chat, [
             'step'               => 'nilai_pilih_siswa',
@@ -1059,7 +1074,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
 
     // ── NILAI TUGAS: PILIH SISWA ────────────────────────────────────────────
     if ($step === 'nilai_pilih_siswa') {
-        if ($text === '🔙 Kembali') {
+        if ($text === '🔙 Kembali ke Menu') {
             // Kembali ke pilih tugas
             $tugasList = getTugasUntukNilai((int)$user['akun_id']);
             if (empty($tugasList)) {
@@ -1088,7 +1103,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
                     $keyboard[count($keyboard) - 1][] = (string)$no;
                 }
             }
-            $keyboard[] = ['🔙 Kembali'];
+            $keyboard[] = ['🔙 Kembali ke Menu'];
 
             setState($chat, [
                 'step'       => 'nilai_pilih_tugas',
@@ -1125,14 +1140,14 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
             'user_cache'            => $user,
         ]);
 
-        $keyboard = [['✏️ Nilai'], ['⬅️ Kembali']];
+        $keyboard = [['✏️ Nilai'], ['🔙 Kembali ke Menu']];
         sendMsg($chat, $pesan, $keyboard);
         return true;
     }
 
     // ── NILAI TUGAS: LIHAT JAWABAN & INPUT NILAI ────────────────────────────
     if ($step === 'nilai_lihat_jawaban') {
-        if ($text === '⬅️ Kembali' || $text === '🔙 Kembali') {
+        if ($text === '🔙 Kembali ke Menu') {
             // Kembali ke daftar siswa
             $pengumpulanList = $state['pengumpulan_list'] ?? [];
             $pesan = "📝 *Daftar Pengumpulan*\n\n";
@@ -1158,7 +1173,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
                     $keyboard[count($keyboard) - 1][] = (string)$no;
                 }
             }
-            $keyboard[] = ['🔙 Kembali'];
+            $keyboard[] = ['🔙 Kembali ke Menu'];
 
             setState($chat, [
                 'step'             => 'nilai_pilih_siswa',
@@ -1301,7 +1316,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
 
                 $keyboard = [
                     ['⭐ Nilai Tugas Lain'],
-                    ['🏠 Kembali ke Menu'],
+                    ['🔙 Kembali ke Menu'],
                 ];
 
                 setState($chat, [
@@ -1352,7 +1367,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
                     $keyboard[count($keyboard) - 1][] = (string)$no;
                 }
             }
-            $keyboard[] = ['🔙 Kembali'];
+            $keyboard[] = ['🔙 Kembali ke Menu'];
 
             setState($chat, [
                 'step'       => 'nilai_pilih_tugas',
@@ -1364,12 +1379,12 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
             return true;
         }
 
-        if ($text === '🏠 Kembali ke Menu') {
+        if ($text === '🔙 Kembali ke Menu') {
             setState($chat, [
                 'step'       => 'menu',
                 'user_cache' => $user,
             ]);
-            sendMsg($chat, "🏠 Menu utama:", mainKeyboard($user['role']));
+            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
             return true;
         }
 
@@ -1377,7 +1392,7 @@ function handleState(string $step, string $text, int $chat, array $state, ?array
             'step'       => 'menu',
             'user_cache' => $user,
         ]);
-        sendMsg($chat, "🏠 Menu utama:", mainKeyboard($user['role']));
+        sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
         return true;
     }
 

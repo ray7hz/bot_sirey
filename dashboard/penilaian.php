@@ -465,7 +465,7 @@ $pending_revisions = $role_guru === 'guru' ? getPendingRevisions($id_guru) : [];
   </div>
   <div class="stat-card">
     <div class="stat-icon purple">📊</div>
-    <div><div class="stat-value"><?php echo $total_tugas > 0 ? round(($total_sudah_dinilai / ($total_sudah_dinilai + $total_belum_dinilai)) * 100) : 0; ?>%</div><div class="stat-label">Progress</div></div>
+    <div><div class="stat-value"><?php echo ($total_sudah_dinilai + $total_belum_dinilai) > 0 ? round(($total_sudah_dinilai / ($total_sudah_dinilai + $total_belum_dinilai)) * 100) : 0; ?>%</div><div class="stat-label">Progress</div></div>
   </div>
 </div>
 
