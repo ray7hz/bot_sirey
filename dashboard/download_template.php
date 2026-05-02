@@ -1,30 +1,84 @@
 <?php
 /**
- * download_template.php - Download template CSV untuk import pengguna
- * Akses: http://localhost/bot_sirey/dashboard/download_template.php
+ * Generate sample Excel file untuk import pengguna
+ * Usage: http://localhost/bot_sirey/generate_template.php
  */
 
-header('Content-Type: text/csv; charset=utf-8');
-header('Content-Disposition: attachment; filename=template_pengguna.csv');
+declare(strict_types=1);
 
-$output = fopen('php://output', 'w');
-
-// Header kolom
-fputcsv($output, ['NIS/NIP', 'Nama Lengkap', 'Role', 'Kelas', 'Jenis_Kelamin']);
-
-// Contoh data
-$examples = [
-    ['1001', 'Ahmad Rizki Pratama', 'siswa', 'XII RPL A', 'L'],
-    ['1002', 'Siti Nur Azizah', 'siswa', 'XII RPL A', 'P'],
-    ['1003', 'Muhammad Ikhsan', 'siswa', 'XII RPL A', 'L'],
-    ['2001', 'Budi Santoso', 'guru', '', 'L'],
-    ['2002', 'Ina Mustika Sari', 'guru', '', 'P'],
-    ['3001', 'Admin User', 'admin', '', ''],
-];
-
-foreach ($examples as $row) {
-    fputcsv($output, $row);
+if (!class_exists('PhpOffice\\PhpSpreadsheet\\IOFactory')) {
+    $autoloadPath = __DIR__ . '/../vendor/autoload.php';
+    if (file_exists($autoloadPath)) {
+        require_once $autoloadPath;
+    } else {
+        http_response_code(500);
+        die('Error: vendor/autoload.php not found at ' . $autoloadPath);
+    }
 }
 
-fclose($output);
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+
+try {
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    
+    // Set column widths
+    $sheet->getColumnDimension('A')->setWidth(5);
+    $sheet->getColumnDimension('B')->setWidth(25);
+    $sheet->getColumnDimension('C')->setWidth(12);
+    $sheet->getColumnDimension('D')->setWidth(8);
+    $sheet->getColumnDimension('E')->setWidth(15);
+    
+    // Header row
+    $headers = ['NO', 'NAMA', 'NIS', 'L/P', 'KELAS'];
+    $sheet->fromArray($headers, NULL, 'A1');
+    
+    // Style header
+    $headerStyle = [
+        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '4472C4']],
+        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+    ];
+    
+    for ($col = 'A'; $col <= 'E'; $col++) {
+        $sheet->getStyle($col . '1')->applyFromArray($headerStyle);
+    }
+    
+    // Sample data
+    $sampleData = [
+        [1, 'Adi Pranoto', '001', 'L', 'X-A'],
+        [2, 'Budi Santoso', '002', 'L', 'X-A'],
+        [3, 'Citra Dewi', '003', 'P', 'X-A'],
+        [4, 'Diana Putri', '004', 'P', 'X-B'],
+        [5, 'Eka Wijaya', '005', 'L', 'X-B'],
+        [6, 'Fatimah Zahra', '006', 'P', 'X-B'],
+        [7, 'Guntur Dwi', '007', 'L', 'X-C'],
+        [8, 'Hana Kusumo', '008', 'P', 'X-C'],
+        [9, 'Indra Kusuma', '009', 'L', 'X-C'],
+        [10, 'Joko Santoso', '010', 'L', 'X-C'],
+    ];
+    
+    $sheet->fromArray($sampleData, NULL, 'A2');
+    
+    // Center align columns
+    $sheet->getStyle('A2:A11')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('D2:D11')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    
+    // Freeze panes
+    $sheet->freezePane('A2');
+    
+    // Output file
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="Template_Import_Pengguna.xlsx"');
+    header('Cache-Control: max-age=0');
+    
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
+    
+} catch (Exception $e) {
+    http_response_code(500);
+    echo 'Error: ' . htmlspecialchars($e->getMessage());
+}
 ?>

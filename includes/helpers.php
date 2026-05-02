@@ -46,9 +46,9 @@ function ensureSireySchema(): void
     $checked = true;
 
     try {
-        if (!sirey_tableExists('telegram_sessions_rayhanRP')) {
+        if (!sirey_tableExists('telegram_sessions_rayhanrp')) {
             sirey_execute(
-                'CREATE TABLE telegram_sessions_rayhanRP (
+                'CREATE TABLE telegram_sessions_rayhanrp (
                     session_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                     akun_id INT NOT NULL,
                     chat_id BIGINT NOT NULL,
@@ -64,9 +64,9 @@ function ensureSireySchema(): void
             );
         }
 
-        if (sirey_tableExists('grup_rayhanRP') && !sirey_columnExists('grup_rayhanRP', 'wali_kelas_id')) {
-            sirey_execute('ALTER TABLE grup_rayhanRP ADD COLUMN wali_kelas_id INT NULL AFTER pembuat_id');
-            sirey_execute('ALTER TABLE grup_rayhanRP ADD INDEX idx_grup_wali_kelas (wali_kelas_id)');
+        if (sirey_tableExists('grup_rayhanrp') && !sirey_columnExists('grup_rayhanrp', 'wali_kelas_id')) {
+            sirey_execute('ALTER TABLE grup_rayhanrp ADD COLUMN wali_kelas_id INT NULL AFTER pembuat_id');
+            sirey_execute('ALTER TABLE grup_rayhanrp ADD INDEX idx_grup_wali_kelas (wali_kelas_id)');
         }
     } catch (Throwable $e) {
         error_log('ensureSireySchema: ' . $e->getMessage());
@@ -131,7 +131,7 @@ function fetchAccountByNis(string $nis_rayhanrp): ?array
 {
     $pernyataan_rayhanrp = sirey_query(
         'SELECT akun_id, nis_nip, password, role, nama_lengkap
-         FROM akun_rayhanRP WHERE nis_nip = ? LIMIT 1',
+         FROM akun_rayhanrp WHERE nis_nip = ? LIMIT 1',
         's',
         $nis_rayhanrp
     );
@@ -287,25 +287,6 @@ function saveStates(array $data_rayhanrp): void
     error_log("[STATE] Failed to save states after {$retries} retries");
 }
 
-function getState(int $id_chat_rayhanrp): ?array
-{
-    $daftar_state_rayhanrp = loadStates();
-    return $daftar_state_rayhanrp[(string)$id_chat_rayhanrp] ?? null;
-}
-
-function setState(int $id_chat_rayhanrp, ?array $state_rayhanrp): void
-{
-    $daftar_state_rayhanrp = loadStates();
-
-    if ($state_rayhanrp === null) {
-        unset($daftar_state_rayhanrp[(string)$id_chat_rayhanrp]);
-    } else {
-        $daftar_state_rayhanrp[(string)$id_chat_rayhanrp] = $state_rayhanrp;
-    }
-
-    saveStates($daftar_state_rayhanrp);
-}
-
 
 // ================== UTIL ==================
 
@@ -348,17 +329,12 @@ function buildKeyboard(array $buttons, bool $resizable = true): array
     ];
 }
 
-function buildInlineKeyboard(array $buttons): array
-{
-    return ['inline_keyboard' => $buttons];
-}
-
 function getMatpelGuru(int $guruId): array
 {
     return sirey_fetchAll(sirey_query(
         'SELECT DISTINCT mp.matpel_id, mp.kode, mp.nama
-         FROM guru_mengajar_rayhanRP gm
-         INNER JOIN mata_pelajaran_rayhanRP mp ON gm.matpel_id = mp.matpel_id
+         FROM guru_mengajar_rayhanrp gm
+         INNER JOIN mata_pelajaran_rayhanrp mp ON gm.matpel_id = mp.matpel_id
          WHERE gm.akun_id = ? AND gm.aktif = 1 AND mp.aktif = 1
          ORDER BY mp.nama ASC',
         'i',
@@ -374,9 +350,9 @@ function getTeachingCoverageByMatpel(int $matpelId, ?int $guruId = null): array
 
     $sql = 'SELECT g.grup_id, g.nama_grup, g.jurusan,
                    GROUP_CONCAT(DISTINCT a.nama_lengkap ORDER BY a.nama_lengkap SEPARATOR ", ") AS guru_nama
-            FROM guru_mengajar_rayhanRP gm
-            INNER JOIN grup_rayhanRP g ON gm.grup_id = g.grup_id
-            INNER JOIN akun_rayhanRP a ON gm.akun_id = a.akun_id
+            FROM guru_mengajar_rayhanrp gm
+            INNER JOIN grup_rayhanrp g ON gm.grup_id = g.grup_id
+            INNER JOIN akun_rayhanrp a ON gm.akun_id = a.akun_id
             WHERE gm.matpel_id = ? AND gm.aktif = 1 AND g.aktif = 1';
     $types = 'i';
     $params = [$matpelId];
@@ -396,8 +372,8 @@ function getTeachingCoverageByMatpel(int $matpelId, ?int $guruId = null): array
 function getGrupDiajarGuru(int $guruId, ?int $matpelId = null): array
 {
     $sql = 'SELECT DISTINCT g.grup_id, g.nama_grup, g.jurusan
-            FROM guru_mengajar_rayhanRP gm
-            INNER JOIN grup_rayhanRP g ON gm.grup_id = g.grup_id
+            FROM guru_mengajar_rayhanrp gm
+            INNER JOIN grup_rayhanrp g ON gm.grup_id = g.grup_id
             WHERE gm.akun_id = ? AND gm.aktif = 1 AND g.aktif = 1';
     $types = 'i';
     $params = [$guruId];
@@ -440,7 +416,7 @@ function grupHasMatpelAssignment(int $grupId, int $matpelId, ?int $guruId = null
     }
 
     $sql = 'SELECT id
-            FROM guru_mengajar_rayhanRP
+            FROM guru_mengajar_rayhanrp
             WHERE grup_id = ?
               AND matpel_id = ?
               AND aktif = 1';
@@ -459,8 +435,8 @@ function grupHasMatpelAssignment(int $grupId, int $matpelId, ?int $guruId = null
 function getSemuaGrupUser(int $akunId, bool $onlyActive = true): array
 {
     $sql = 'SELECT g.grup_id, g.nama_grup, g.jurusan, ga.tipe_keanggotaan, ga.aktif
-            FROM grup_anggota_rayhanRP ga
-            INNER JOIN grup_rayhanRP g ON ga.grup_id = g.grup_id
+            FROM grup_anggota_rayhanrp ga
+            INNER JOIN grup_rayhanrp g ON ga.grup_id = g.grup_id
             WHERE ga.akun_id = ?';
     $types = 'i';
     $params = [$akunId];
@@ -613,12 +589,12 @@ function getRekapPengumpulanKelas(int $tugasId, int $grupId): array
                 WHEN p.pengumpulan_id IS NULL THEN "Belum Mengumpulkan"
                 ELSE "Sudah Mengumpulkan"
             END AS status_rekap
-         FROM grup_anggota_rayhanRP ga
-         INNER JOIN akun_rayhanRP a ON a.akun_id = ga.akun_id
-         LEFT JOIN pengumpulan_rayhanRP p
+         FROM grup_anggota_rayhanrp ga
+         INNER JOIN akun_rayhanrp a ON a.akun_id = ga.akun_id
+         LEFT JOIN pengumpulan_rayhanrp p
                 ON p.akun_id = a.akun_id
                AND p.tugas_id = ?
-         LEFT JOIN penilaian_rayhanRP pn ON pn.pengumpulan_id = p.pengumpulan_id
+         LEFT JOIN penilaian_rayhanrp pn ON pn.pengumpulan_id = p.pengumpulan_id
          WHERE ga.grup_id = ?
            AND a.role = "siswa"
          ORDER BY a.nama_lengkap ASC',
@@ -637,10 +613,10 @@ function getRekapPengumpulanKelas(int $tugasId, int $grupId): array
 function getSiswaFromGuruKelas(int $guruId, ?int $matpelId = null): array
 {
     $sql = 'SELECT DISTINCT a.akun_id, a.nis_nip, a.nama_lengkap, g.nama_grup
-            FROM akun_rayhanRP a
-            INNER JOIN grup_anggota_rayhanRP ga ON a.akun_id = ga.akun_id
-            INNER JOIN guru_mengajar_rayhanRP gm ON ga.grup_id = gm.grup_id
-            INNER JOIN grup_rayhanRP g ON ga.grup_id = g.grup_id
+            FROM akun_rayhanrp a
+            INNER JOIN grup_anggota_rayhanrp ga ON a.akun_id = ga.akun_id
+            INNER JOIN guru_mengajar_rayhanrp gm ON ga.grup_id = gm.grup_id
+            INNER JOIN grup_rayhanrp g ON ga.grup_id = g.grup_id
             WHERE a.role = "siswa"
               AND ga.aktif = 1
               AND gm.akun_id = ?
@@ -669,8 +645,8 @@ if (!function_exists('guruHasAccessToSiswa')) {
     function guruHasAccessToSiswa(int $guruId, int $siswaId, ?int $matpelId = null): bool
     {
         $sql = 'SELECT 1
-                FROM guru_mengajar_rayhanRP gm
-                INNER JOIN grup_anggota_rayhanRP ga ON gm.grup_id = ga.grup_id
+                FROM guru_mengajar_rayhanrp gm
+                INNER JOIN grup_anggota_rayhanrp ga ON gm.grup_id = ga.grup_id
                 WHERE gm.akun_id = ?
                   AND ga.akun_id = ?
                   AND gm.aktif = 1

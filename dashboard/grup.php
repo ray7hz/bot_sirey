@@ -3,787 +3,447 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/import_functions.php';
 
-// Start session for AJAX requests
 startSession();
-ensureSireySchema();
 
-$admin_ajax_rayhanrp = [
-    'id' => (int)($_SESSION['admin_id'] ?? 0),
+$admin = [
+    'id'   => (int)($_SESSION['admin_id'] ?? 0),
     'role' => (string)($_SESSION['admin_role'] ?? ''),
     'name' => (string)($_SESSION['admin_name'] ?? ''),
 ];
 
-$bisa_kelola_anggota_ajax_rayhanrp = can('update_grup', $admin_ajax_rayhanrp);
-$bisa_buat_jadwal_ajax_rayhanrp = can('create_jadwal', $admin_ajax_rayhanrp);
-$bisa_update_jadwal_ajax_rayhanrp = can('update_jadwal', $admin_ajax_rayhanrp);
-$bisa_hapus_jadwal_ajax_rayhanrp = can('delete_jadwal', $admin_ajax_rayhanrp);
+// ═══ AJAX HANDLERS ═══
+$aksi_ajax = (string)($_GET['action'] ?? '');
+$id_grup   = (int)($_GET['grup_id'] ?? 0);
 
-// ===== HANDLE AJAX REQUESTS =====
-$aksi_rayhanrp = (string)($_GET['action'] ?? '');
-$id_grup_rayhanrp = (int)($_GET['grup_id'] ?? 0);
-
-if (!empty($aksi_rayhanrp) && $id_grup_rayhanrp > 0) {
-    if ($admin_ajax_rayhanrp['id'] <= 0 || !can('view_grup', $admin_ajax_rayhanrp)) {
+if ($aksi_ajax !== '') {
+    if ($admin['id'] <= 0 || !can('view_grup', $admin)) {
         header('Content-Type: application/json; charset=utf-8');
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
         exit;
     }
 
-    if (in_array($aksi_rayhanrp, ['get_members', 'get_jadwal', 'get_tugas', 'get_available_users'])) {
+    $bisa_kelola = can('update_grup', $admin);
+
+    if ($aksi_ajax === 'get_members') {
         header('Content-Type: text/html; charset=utf-8');
-    } else {
-        header('Content-Type: application/json; charset=utf-8');
-    }
-    
-    if ($aksi_rayhanrp === 'get_members') {
-        $pencarian_rayhanrp = trim((string)($_GET['search'] ?? ''));
-        
-        $pernyataan_sql_rayhanrp = "
-            SELECT 
-                a.akun_id,
-                a.nis_nip,
-                a.nama_lengkap,
-                a.role,
-                a.jenis_kelamin
-            FROM akun_rayhanRP a
-            JOIN grup_anggota_rayhanRP ga ON a.akun_id = ga.akun_id
-            WHERE ga.grup_id = ?
-        ";
-        
-        $parameter_rayhanrp = [$id_grup_rayhanrp];
-        $tipe_rayhanrp = 'i';
-        
-        if (!empty($pencarian_rayhanrp)) {
-            $pernyataan_sql_rayhanrp .= " AND (a.nis_nip LIKE ? OR a.nama_lengkap LIKE ?)";
-            $istilah_pencarian_rayhanrp = '%' . $pencarian_rayhanrp . '%';
-            $parameter_rayhanrp[] = $istilah_pencarian_rayhanrp;
-            $parameter_rayhanrp[] = $istilah_pencarian_rayhanrp;
-            $tipe_rayhanrp .= 'ss';
+        $cari = trim((string)($_GET['search'] ?? ''));
+        $sql  = "SELECT a.akun_id,a.nis_nip,a.nama_lengkap,a.role,a.jenis_kelamin
+                 FROM akun_rayhanrp a JOIN grup_anggota_rayhanrp ga ON a.akun_id=ga.akun_id
+                 WHERE ga.grup_id=?";
+        $types = 'i'; $params = [$id_grup];
+        if ($cari !== '') {
+            $sql .= " AND (a.nis_nip LIKE ? OR a.nama_lengkap LIKE ?)";
+            $types .= 'ss'; $params[] = "%$cari%"; $params[] = "%$cari%";
         }
-        
-        $pernyataan_sql_rayhanrp .= " ORDER BY a.nama_lengkap ASC";
-        
-        $hasil_rayhanrp = sirey_query($pernyataan_sql_rayhanrp, $tipe_rayhanrp, ...$parameter_rayhanrp);
-        if (!$hasil_rayhanrp) {
-            echo '<p style="color:red;">Error query database</p>';
-            exit;
-        }
-        
-        $daftar_anggota_rayhanrp = sirey_fetchAll($hasil_rayhanrp);
-        if (!is_array($daftar_anggota_rayhanrp)) {
-            echo '<p style="color:red;">Error fetch members</p>';
-            exit;
-        }
-        
-        ?>
-<div style="margin-bottom:15px; display:flex; gap:10px; align-items:center;">
-    <input type="text" id="searchMembers" placeholder="Cari nama atau NIS..." value="<?php echo htmlspecialchars($pencarian_rayhanrp); ?>" 
-           style="flex:1; padding:8px; border:1px solid #ddd; border-radius:4px;" 
-           onkeyup="filterMembers(this.value, <?php echo $id_grup_rayhanrp; ?>)">
-    <button type="button" onclick="filterMembers('', <?php echo $id_grup_rayhanrp; ?>)" 
-            style="background:#6c757d; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">
-        ✕ Clear
-    </button>
-</div>
-
-<?php
-        if (empty($daftar_anggota_rayhanrp)) {
-            echo '<p style="text-align:center; color:#999; padding:20px;">Tidak ada anggota yang cocok</p>';
-        } else {
-            ?>
-<?php if ($bisa_kelola_anggota_ajax_rayhanrp): ?>
-<div style="margin-bottom:15px; display:none;" id="bulkDeleteMembersSection">
-    <div style="background:#ffe6e6; border:1px solid #ffcccc; padding:10px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:#c00;">
-            <strong id="memberSelectedCount">0 anggota dipilih</strong>
-        </span>
-        <button type="button" onclick="bulkDeleteMembers(<?php echo $id_grup_rayhanrp; ?>)" 
-                style="background:#dc3545; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">
-            🗑️ Hapus Terpilih
-        </button>
-    </div>
-</div>
-<?php endif; ?>
-
-<table style="width:100%; border-collapse:collapse;">
-    <thead>
-        <tr style="background:#f5f5f5; border-bottom:2px solid #dee2e6;">
-            <?php if ($bisa_kelola_anggota_ajax_rayhanrp): ?>
-            <th style="padding:12px; text-align:center; font-weight:bold; width:40px;">
-                <input type="checkbox" id="selectAllMembers" onchange="toggleSelectAllMembers(this, <?php echo $id_grup_rayhanrp; ?>)">
-            </th>
-            <?php endif; ?>
-            <th style="padding:12px; text-align:left; font-weight:bold;">NIS/NIP</th>
-            <th style="padding:12px; text-align:left; font-weight:bold;">Nama Lengkap</th>
-            <th style="padding:12px; text-align:left; font-weight:bold;">Role</th>
-            <th style="padding:12px; text-align:left; font-weight:bold;">Jenis Kelamin</th>
-            <?php if ($bisa_kelola_anggota_ajax_rayhanrp): ?>
-            <th style="padding:12px; text-align:center; font-weight:bold;">Aksi</th>
-            <?php endif; ?>
-        </tr>
-    </thead>
-    <tbody>
-        <?php foreach ($daftar_anggota_rayhanrp as $baris_anggota_rayhanrp): ?>
-            <tr style="border-bottom:1px solid #dee2e6;">
-                <?php if ($bisa_kelola_anggota_ajax_rayhanrp): ?>
-                <td style="padding:12px; text-align:center;">
-                    <input type="checkbox" class="memberCheckbox" value="<?php echo (int)$baris_anggota_rayhanrp['akun_id']; ?>" 
-                           onchange="updateMemberBulkUI(<?php echo $id_grup_rayhanrp; ?>)">
-                </td>
-                <?php endif; ?>
-                <td style="padding:12px;"><?php echo htmlspecialchars($baris_anggota_rayhanrp['nis_nip'] ?? $baris_anggota_rayhanrp['akun_id']); ?></td>
-                <td style="padding:12px;"><?php echo htmlspecialchars($baris_anggota_rayhanrp['nama_lengkap']); ?></td>
-                <td style="padding:12px;">
-                    <span style="display:inline-block; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; 
-                                 background:<?php echo $baris_anggota_rayhanrp['role'] === 'guru' ? '#e3f2fd' : '#f3e5f5'; ?>; 
-                                 color:<?php echo $baris_anggota_rayhanrp['role'] === 'guru' ? '#1976d2' : '#7b1fa2'; ?>;">
-                        <?php echo htmlspecialchars(ucfirst($baris_anggota_rayhanrp['role'])); ?>
-                    </span>
-                </td>
-                <td style="padding:12px;"><?php echo htmlspecialchars($baris_anggota_rayhanrp['jenis_kelamin'] ?? '-'); ?></td>
-                <?php if ($bisa_kelola_anggota_ajax_rayhanrp): ?>
-                <td style="padding:12px; text-align:center;">
-                    <button type="button" onclick="deleteMemberFromGroup(<?php echo (int)$baris_anggota_rayhanrp['akun_id']; ?>, <?php echo $id_grup_rayhanrp; ?>, <?php echo htmlspecialchars(json_encode($baris_anggota_rayhanrp['nama_lengkap']), ENT_QUOTES, 'UTF-8'); ?>)"
-                            style="background:#dc3545; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold;">
-                        🗑️ Hapus
-                    </button>
-                </td>
-                <?php endif; ?>
-            </tr>
-        <?php endforeach; ?>
-    </tbody>
-</table>
-            <?php
-        }
+        $sql .= " ORDER BY a.nama_lengkap ASC";
+        $rows = sirey_fetchAll(sirey_query($sql, $types, ...$params));
+        include __DIR__ . '/partials/_member_list.php';
         exit;
-    } elseif ($aksi_rayhanrp === 'delete_member') {
-        if (!can('update_grup', $admin_ajax_rayhanrp)) {
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
-            exit;
+    }
+
+    if ($aksi_ajax === 'get_available_users') {
+        header('Content-Type: text/html; charset=utf-8');
+        if (!$bisa_kelola) { echo ''; exit; }
+        $rows = sirey_fetchAll(sirey_query(
+            "SELECT a.akun_id,a.nis_nip,a.nama_lengkap FROM akun_rayhanrp a
+             WHERE a.akun_id NOT IN (SELECT akun_id FROM grup_anggota_rayhanRP WHERE grup_id=?)
+             ORDER BY a.nama_lengkap ASC", 'i', $id_grup
+        ));
+        if (empty($rows)) { echo '<p class="text-muted fst-italic small">Semua pengguna sudah menjadi anggota grup.</p>'; exit; }
+        echo '<select id="addMemberSelect" class="form-select form-select-sm"><option value="">— Pilih Anggota —</option>';
+        foreach ($rows as $u) {
+            echo '<option value="'.(int)$u['akun_id'].'">'.htmlspecialchars($u['nis_nip'].' - '.$u['nama_lengkap']).'</option>';
         }
-        
+        echo '</select>';
+        exit;
+    }
+
+    if ($aksi_ajax === 'get_jadwal') {
+        header('Content-Type: text/html; charset=utf-8');
+        $rows = sirey_fetchAll(sirey_query(
+            "SELECT gm.id AS jadwal_id,gm.hari,gm.jam_mulai,gm.jam_selesai,
+                    a.nama_lengkap AS guru_nama,mp.nama AS nama_mapel
+             FROM guru_mengajar_rayhanrp gm
+             LEFT JOIN akun_rayhanrp a ON gm.akun_id=a.akun_id
+             LEFT JOIN mata_pelajaran_rayhanrp mp ON gm.matpel_id=mp.matpel_id
+             WHERE gm.grup_id=? AND gm.hari IS NOT NULL
+             ORDER BY FIELD(gm.hari,'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'),gm.jam_mulai ASC",
+            'i', $id_grup
+        ));
+        ob_start();
+        if (empty($rows)) { echo '<p class="text-center text-muted py-4">Tidak ada jadwal.</p>'; }
+        else {
+            echo '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead><tr>
+                  <th>Hari</th><th>Jam</th><th>Guru</th><th>Mapel</th></tr></thead><tbody>';
+            foreach ($rows as $r) {
+                echo '<tr><td><span class="badge bg-primary">'.$r['hari'].'</span></td>'
+                    .'<td>'.substr($r['jam_mulai'],0,5).' – '.substr($r['jam_selesai'],0,5).'</td>'
+                    .'<td>'.htmlspecialchars($r['guru_nama'] ?? '-').'</td>'
+                    .'<td>'.htmlspecialchars($r['nama_mapel'] ?? '-').'</td></tr>';
+            }
+            echo '</tbody></table></div>';
+        }
+        echo '<div class="alert alert-info mt-3 py-2 small"><i class="bi bi-info-circle me-1"></i>Jadwal dikelola melalui menu <strong>Guru Mengajar</strong>.</div>';
+        echo ob_get_clean();
+        exit;
+    }
+
+    if ($aksi_ajax === 'get_tugas') {
+        header('Content-Type: text/html; charset=utf-8');
+        $rows = sirey_fetchAll(sirey_query(
+            "SELECT t.tugas_id,t.judul,t.tenggat,mp.nama AS matpel_nama
+             FROM tugas_rayhanRP t LEFT JOIN mata_pelajaran_rayhanRP mp ON t.matpel_id=mp.matpel_id
+             WHERE t.grup_id=? ORDER BY t.tenggat DESC", 'i', $id_grup
+        ));
+        if (empty($rows)) { echo '<p class="text-center text-muted py-4">Belum ada tugas.</p>'; }
+        else {
+            echo '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead><tr>
+                  <th>Judul</th><th>Mapel</th><th>Tenggat</th></tr></thead><tbody>';
+            foreach ($rows as $r) {
+                $over = strtotime($r['tenggat']) < time();
+                echo '<tr><td>'.htmlspecialchars($r['judul']).'</td>'
+                    .'<td>'.htmlspecialchars($r['matpel_nama'] ?? '-').'</td>'
+                    .'<td><span class="badge '.($over ? 'bg-danger' : 'bg-success').'">'.date('d/m/Y', strtotime($r['tenggat'])).'</span></td></tr>';
+            }
+            echo '</tbody></table></div>';
+        }
+        echo '<div class="alert alert-info mt-3 py-2 small"><i class="bi bi-info-circle me-1"></i>Tugas dikelola melalui menu <strong>Tugas</strong>.</div>';
+        exit;
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    if ($aksi_ajax === 'delete_member') {
+        if (!$bisa_kelola) { echo json_encode(['success'=>false,'message'=>'Akses ditolak']); exit; }
         $akunId = (int)($_GET['akun_id'] ?? 0);
-        
-        if ($akunId <= 0) {
-            echo json_encode(['success' => false, 'message' => 'ID tidak valid']);
-            exit;
-        }
-        
-        $userPrimaryGrupId = getPrimaryGroupId($akunId) ?? 0;
-        
-        removeUserMembership($akunId, $id_grup_rayhanrp);
-        if ($userPrimaryGrupId === $id_grup_rayhanrp) {
-            syncPrimaryGroup($akunId, null);
-        }
-        
-        echo json_encode(['success' => true, 'message' => 'Anggota berhasil dihapus']);
-        exit;
-    } elseif ($aksi_rayhanrp === 'toggle_status') {
-        if (!can('update_grup', $admin_ajax_rayhanrp)) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
-            exit;
-        }
-        
-        $statusBaru = (int)($_POST['status'] ?? 0);
-        if ($statusBaru !== 0 && $statusBaru !== 1) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Status tidak valid']);
-            exit;
-        }
-        
-        $sql = 'UPDATE grup_rayhanRP SET aktif = ? WHERE grup_id = ?';
-        sirey_execute($sql, 'ii', $statusBaru, $id_grup_rayhanrp);
-        
-        auditLog($admin_ajax_rayhanrp['id'], 'toggle_grup', 'grup', $id_grup_rayhanrp, ['aktif' => $statusBaru]);
-        
-        $statusLabel = $statusBaru === 1 ? 'aktif' : 'non-aktif';
-        echo json_encode(['success' => true, 'message' => 'Grup berhasil diubah menjadi ' . $statusLabel, 'status' => $statusBaru]);
-        exit;
-    } elseif ($aksi_rayhanrp === 'get_available_users') {
-        if (!$bisa_kelola_anggota_ajax_rayhanrp) {
-            echo '';
-            exit;
-        }
-        
-        $sql = "
-            SELECT 
-                a.akun_id,
-                a.nis_nip,
-                a.nama_lengkap
-            FROM akun_rayhanRP a
-            WHERE a.role = 'siswa' AND a.akun_id NOT IN (
-                SELECT akun_id FROM grup_anggota_rayhanRP WHERE grup_id = ?
-            )
-            ORDER BY a.nama_lengkap ASC
-        ";
-        
-        $result = sirey_query($sql, 'i', $id_grup_rayhanrp);
-        if (!$result) {
-            echo '<p style="color:red;">Error query database</p>';
-            exit;
-        }
-        
-        $users = sirey_fetchAll($result);
-        if (!is_array($users) || empty($users)) {
-            echo '<p style="color:#999; font-style:italic;">Semua siswa sudah menjadi anggota grup</p>';
-        } else {
-            ?>
-<form id="addMembersForm" onsubmit="submitAddMembers(event, <?php echo $id_grup_rayhanrp; ?>)">
-    <!-- Checkbox Select All untuk Bulk Insert -->
-    <label style="display:block; margin-bottom:10px; font-weight:bold; cursor:pointer;">
-        <input type="checkbox" id="selectAllAvailableMembers" onchange="toggleSelectAllAvailableMembers(this)">
-        Pilih semua siswa
-    </label>
-    
-    <div style="max-height:260px; overflow:auto; border:1px solid #e5e7eb; border-radius:6px; padding:10px;">
-        <?php foreach ($users as $user): ?>
-            <label style="display:block; padding:6px 4px; border-bottom:1px solid #f1f5f9; cursor:pointer;" class="siswa-option">
-                <input type="checkbox" class="availableMemberCheckbox" name="siswa_id[]" value="<?php echo (int)$user['akun_id']; ?>">
-                <span><?php echo htmlspecialchars($user['nis_nip'] . ' - ' . $user['nama_lengkap']); ?></span>
-            </label>
-        <?php endforeach; ?>
-    </div>
-    <button type="submit" style="margin-top:12px; background:#28a745; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">
-        Tambah Anggota Terpilih
-    </button>
-</form>
-<form id="importMembersExcelForm" onsubmit="submitImportMembersExcel(event, <?php echo $id_grup_rayhanrp; ?>)" enctype="multipart/form-data" style="margin-top:18px; padding-top:14px; border-top:1px solid #e5e7eb;">
-    <label style="display:block; margin-bottom:8px; font-weight:bold;">Import siswa dari Excel</label>
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <input type="file" name="excel_file" accept=".xlsx,.xls,.csv" required>
-        <button type="submit" style="background:#0369a1; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">
-            Import NIS
-        </button>
-    </div>
-    <small style="display:block; margin-top:6px; color:#64748b;">Kolom NIS dicocokkan ke master akun siswa; data master tidak diubah.</small>
-</form>
-            <?php
-        }
-        exit;
-    } elseif ($aksi_rayhanrp === 'bulk_add_members') {
-        if (!can('update_grup', $admin_ajax_rayhanrp)) {
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
-            exit;
-        }
-
-        $ids = array_unique(array_filter(array_map('intval', (array)($_POST['siswa_id'] ?? []))));
-        if (empty($ids)) {
-            echo json_encode(['success' => false, 'message' => 'Pilih minimal satu siswa.']);
-            exit;
-        }
-
-        foreach ($ids as $akunId) {
-            $currentGrupId = getPrimaryGroupId($akunId) ?? 0;
-            if ($currentGrupId <= 0) {
-                syncPrimaryGroup($akunId, $id_grup_rayhanrp);
-            } else {
-                ensureUserMembership($akunId, $id_grup_rayhanrp, 'tambahan');
-            }
-        }
-
-        echo json_encode(['success' => true, 'message' => count($ids) . ' anggota berhasil ditambahkan.']);
-        exit;
-    } elseif ($aksi_rayhanrp === 'import_members_excel') {
-        if (!can('update_grup', $admin_ajax_rayhanrp)) {
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
-            exit;
-        }
-
-        if (empty($_FILES['excel_file']['tmp_name']) || !is_uploaded_file($_FILES['excel_file']['tmp_name'])) {
-            echo json_encode(['success' => false, 'message' => 'File Excel wajib diunggah.']);
-            exit;
-        }
-
-        $hasil_import_rayhanrp = importSiswaKeKelasDariExcel($_FILES['excel_file']['tmp_name'], $id_grup_rayhanrp);
-        echo json_encode([
-            'success' => (bool)$hasil_import_rayhanrp['success'],
-            'message' => ($hasil_import_rayhanrp['imported'] ?? 0) . ' siswa berhasil diimport, ' . ($hasil_import_rayhanrp['failed'] ?? 0) . ' gagal.',
-            'errors' => array_slice((array)($hasil_import_rayhanrp['errors'] ?? []), 0, 10),
-        ]);
-        exit;
-    } elseif ($aksi_rayhanrp === 'bulk_delete_members') {
-        if (!can('update_grup', $admin_ajax_rayhanrp)) {
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
-            exit;
-        }
-        $ids = (array)($_POST['member_ids'] ?? []);
-        $ids = array_filter(array_map('intval', $ids));
-        
-        if (empty($ids)) {
-            echo json_encode(['success' => false, 'message' => 'Tidak ada yang dipilih']);
-            exit;
-        }
-        
-        foreach ($ids as $akunId) {
-            $userPrimaryGrupId = getPrimaryGroupId($akunId) ?? 0;
-
-            removeUserMembership($akunId, $id_grup_rayhanrp);
-            if ($userPrimaryGrupId === $id_grup_rayhanrp) {
-                syncPrimaryGroup($akunId, null);
-            }
-        }
-        
-        echo json_encode(['success' => true, 'message' => count($ids) . ' anggota berhasil dihapus']);
+        $primary = getPrimaryGroupId($akunId) ?? 0;
+        removeUserMembership($akunId, $id_grup);
+        if ($primary === $id_grup) syncPrimaryGroup($akunId, null);
+        echo json_encode(['success'=>true,'message'=>'Anggota berhasil dihapus']);
         exit;
     }
-}
 
-// ===== PAGE LOAD =====
-$judul_halaman_rayhanrp  = 'Grup / Kelas';
-$menu_aktif_rayhanrp = 'grup';
-require_once __DIR__ . '/_layout.php';
+    if ($aksi_ajax === 'add_member') {
+        if (!$bisa_kelola) { echo json_encode(['success'=>false,'message'=>'Akses ditolak']); exit; }
+        $akunId = (int)($_GET['akun_id'] ?? 0);
+        $check  = sirey_fetch(sirey_query("SELECT akun_id FROM grup_anggota_rayhanRP WHERE grup_id=? AND akun_id=?",'ii',$id_grup,$akunId));
+        if ($check) { echo json_encode(['success'=>false,'message'=>'Anggota sudah ada di grup ini']); exit; }
+        $primary = getPrimaryGroupId($akunId) ?? 0;
+        if ($primary <= 0) syncPrimaryGroup($akunId, $id_grup);
+        else ensureUserMembership($akunId, $id_grup, 'tambahan');
+        echo json_encode(['success'=>true,'message'=>'Anggota berhasil ditambahkan']);
+        exit;
+    }
 
-if (!can('view_grup', $data_admin_rayhanrp)) {
-    header('Location: dashboard.php?err=akses');
+    if ($aksi_ajax === 'toggle_status') {
+        if (!$bisa_kelola) { echo json_encode(['success'=>false,'message'=>'Akses ditolak']); exit; }
+        $status = (int)($_POST['status'] ?? 0);
+        sirey_execute('UPDATE grup_rayhanrp SET aktif=? WHERE grup_id=?','ii',$status,$id_grup);
+        auditLog($admin['id'],'toggle_grup','grup',$id_grup,['aktif'=>$status]);
+        echo json_encode(['success'=>true,'message'=>'Status grup diperbarui','status'=>$status]);
+        exit;
+    }
+
+    if ($aksi_ajax === 'bulk_delete_members') {
+        if (!$bisa_kelola) { echo json_encode(['success'=>false,'message'=>'Akses ditolak']); exit; }
+        $ids = array_filter(array_map('intval',(array)($_POST['member_ids'] ?? [])));
+        foreach ($ids as $aid) {
+            $p = getPrimaryGroupId($aid) ?? 0;
+            removeUserMembership($aid, $id_grup);
+            if ($p === $id_grup) syncPrimaryGroup($aid, null);
+        }
+        echo json_encode(['success'=>true,'message'=>count($ids).' anggota dihapus']);
+        exit;
+    }
+
+    echo json_encode(['success'=>false,'message'=>'Aksi tidak dikenal']);
     exit;
 }
 
-$pesan_rayhanrp = '';
-$error_rayhanrp = '';
-$bisa_buat_grup_rayhanrp = can('create_grup', $data_admin_rayhanrp);
-$bisa_update_grup_rayhanrp = can('update_grup', $data_admin_rayhanrp);
-$bisa_hapus_grup_rayhanrp = can('delete_grup', $data_admin_rayhanrp);
-$bisa_kelola_anggota_rayhanrp = $bisa_update_grup_rayhanrp;
-$bisa_tulis_grup_rayhanrp = $bisa_buat_grup_rayhanrp || $bisa_update_grup_rayhanrp || $bisa_hapus_grup_rayhanrp;
+// ═══ NORMAL PAGE ═══
+$judul_halaman_rayhanrp = 'Grup / Kelas';
+$menu_aktif_rayhanrp    = 'grup';
+require_once __DIR__ . '/_layout.php';
 
-$bisa_buat_jadwal_rayhanrp = can('create_jadwal', $data_admin_rayhanrp);
-$bisa_update_jadwal_rayhanrp = can('update_jadwal', $data_admin_rayhanrp);
-$bisa_hapus_jadwal_rayhanrp = can('delete_jadwal', $data_admin_rayhanrp);
+if (!can('view_grup', $data_admin_rayhanrp)) {
+    header('Location: dashboard.php?err=akses'); exit;
+}
 
-$deskripsi_halaman_rayhanrp = match ($data_admin_rayhanrp['role']) {
-    'guru' => 'Hanya kelas yang Anda ajar yang ditampilkan. Halaman ini read-only.',
-    'kepala_sekolah' => 'Mode baca saja untuk pemantauan grup, anggota, jadwal, dan tugas.',
-    default => 'Kelola grup, anggota, dan kelas.',
-};
+$bisa_buat   = can('create_grup', $data_admin_rayhanrp);
+$bisa_ubah   = can('update_grup', $data_admin_rayhanrp);
+$bisa_hapus  = can('delete_grup', $data_admin_rayhanrp);
+$bisa_tulis  = $bisa_buat || $bisa_ubah || $bisa_hapus;
+$id_pembuat  = (int)($data_admin_rayhanrp['id'] ?? 0);
+$pesan = $error = '';
 
-$id_pembuat_rayhanrp = (int)($_SESSION['admin_id'] ?? 0);
-$daftar_guru_wali_rayhanrp = sirey_fetchAll(sirey_query(
-    'SELECT akun_id, nama_lengkap
-     FROM akun_rayhanRP
-     WHERE role = "guru"
-     ORDER BY nama_lengkap ASC'
-));
+$jurusan_list = ['Teknik Pemesinan','Teknik Mekatronika','Teknik Kimia Industri',
+                 'Pengembangan Perangkat Lunak dan Gim','Desain Komunikasi Visual','Animasi'];
 
+// ── POST ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $aksi_rayhanrp = (string)($_POST['act'] ?? '');
+    $aksi = (string)($_POST['act'] ?? '');
 
-    if ($aksi_rayhanrp === 'create') {
-        $nama_grup_rayhanrp = trim((string)($_POST['nama_grup'] ?? ''));
-        $tingkat_rayhanrp = (int)($_POST['tingkat'] ?? 0);
-        $jurusan_rayhanrp = (string)($_POST['jurusan'] ?? '');
-        $deskripsi_rayhanrp = trim((string)($_POST['deskripsi'] ?? ''));
-        $wali_kelas_id_rayhanrp = (int)($_POST['wali_kelas_id'] ?? 0);
-
-        if (!can('create_grup', $data_admin_rayhanrp)) {
-            $error_rayhanrp = 'Anda tidak memiliki izin membuat grup.';
-        } elseif ($nama_grup_rayhanrp === '') {
-            $error_rayhanrp = 'Nama grup tidak boleh kosong.';
-        } elseif ($tingkat_rayhanrp < 10 || $tingkat_rayhanrp > 12) {
-            $error_rayhanrp = 'Tingkat harus antara 10-12 (Kelas X, XI, XII).';
-        } elseif (empty($jurusan_rayhanrp)) {
-            $error_rayhanrp = 'Jurusan harus dipilih.';
-        } elseif ($id_pembuat_rayhanrp <= 0) {
-            $error_rayhanrp = 'User session tidak valid. Silakan login ulang.';
-        } else {
-            requireNotReadonly($data_admin_rayhanrp, 'grup.php');
-            $hasil_rayhanrp = sirey_execute(
-                'INSERT INTO grup_rayhanRP (nama_grup, tingkat, jurusan, deskripsi, pembuat_id, wali_kelas_id) VALUES (?, ?, ?, ?, ?, ?)',
-                'sissii',
-                $nama_grup_rayhanrp,
-                $tingkat_rayhanrp,
-                $jurusan_rayhanrp,
-                $deskripsi_rayhanrp !== '' ? $deskripsi_rayhanrp : null,
-                $id_pembuat_rayhanrp,
-                $wali_kelas_id_rayhanrp > 0 ? $wali_kelas_id_rayhanrp : null
-            );
-
-            if ($hasil_rayhanrp >= 1) {
-                $id_baru_rayhanrp = sirey_lastInsertId();
-                auditLog($data_admin_rayhanrp['id'], 'create_grup', 'grup', $id_baru_rayhanrp, ['tingkat' => $tingkat_rayhanrp, 'jurusan' => $jurusan_rayhanrp]);
-                $pesan_rayhanrp = "Grup '{$nama_grup_rayhanrp}' berhasil dibuat.";
-            } else {
-                $error_rayhanrp = 'Gagal membuat grup. Nama mungkin sudah dipakai.';
-            }
+    if ($aksi === 'create' && $bisa_buat) {
+        requireNotReadonly($data_admin_rayhanrp, 'grup.php');
+        $nama    = trim((string)($_POST['nama_grup'] ?? ''));
+        $tingkat = (int)($_POST['tingkat'] ?? 0);
+        $jurusan = (string)($_POST['jurusan'] ?? '');
+        $desk    = trim((string)($_POST['deskripsi'] ?? ''));
+        if ($nama === '') { $error = 'Nama grup tidak boleh kosong.'; }
+        elseif ($tingkat < 10 || $tingkat > 12) { $error = 'Tingkat harus 10–12.'; }
+        elseif (!in_array($jurusan, $jurusan_list, true)) { $error = 'Jurusan tidak valid.'; }
+        else {
+            $h = sirey_execute('INSERT INTO grup_rayhanrp (nama_grup,tingkat,jurusan,deskripsi,pembuat_id) VALUES (?,?,?,?,?)',
+                'sissi', $nama, $tingkat, $jurusan, $desk ?: null, $id_pembuat);
+            if ($h >= 1) { auditLog($id_pembuat,'create_grup','grup',sirey_lastInsertId(),['tingkat'=>$tingkat,'jurusan'=>$jurusan]); $pesan = "Grup '$nama' berhasil dibuat."; }
+            else { $error = 'Gagal membuat grup. Nama mungkin sudah dipakai.'; }
         }
-    } elseif ($aksi_rayhanrp === 'update') {
-        $id_grup_rayhanrp = (int)($_POST['id'] ?? 0);
-        $nama_grup_rayhanrp = trim((string)($_POST['nama_grup'] ?? ''));
-        $tingkat_rayhanrp = (int)($_POST['tingkat'] ?? 0);
-        $jurusan_rayhanrp = (string)($_POST['jurusan'] ?? '');
-        $deskripsi_rayhanrp = trim((string)($_POST['deskripsi'] ?? ''));
-        $wali_kelas_id_rayhanrp = (int)($_POST['wali_kelas_id'] ?? 0);
 
-        if (!can('update_grup', $data_admin_rayhanrp)) {
-            $error_rayhanrp = 'Anda tidak memiliki izin mengubah grup.';
-        } elseif ($id_grup_rayhanrp <= 0) {
-            $error_rayhanrp = 'ID grup tidak valid.';
-        } elseif ($nama_grup_rayhanrp === '') {
-            $error_rayhanrp = 'Nama grup tidak boleh kosong.';
-        } elseif ($tingkat_rayhanrp < 10 || $tingkat_rayhanrp > 12) {
-            $error_rayhanrp = 'Tingkat harus antara 10-12 (Kelas X, XI, XII).';
-        } elseif (empty($jurusan_rayhanrp)) {
-            $error_rayhanrp = 'Jurusan harus dipilih.';
-        } else {
-            requireNotReadonly($data_admin_rayhanrp, 'grup.php');
-            $hasil_rayhanrp = sirey_execute(
-                'UPDATE grup_rayhanRP SET nama_grup = ?, tingkat = ?, jurusan = ?, deskripsi = ?, wali_kelas_id = ? WHERE grup_id = ?',
-                'sissii',
-                $nama_grup_rayhanrp,
-                $tingkat_rayhanrp,
-                $jurusan_rayhanrp,
-                $deskripsi_rayhanrp !== '' ? $deskripsi_rayhanrp : null,
-                $wali_kelas_id_rayhanrp > 0 ? $wali_kelas_id_rayhanrp : null,
-                $id_grup_rayhanrp
-            );
+    } elseif ($aksi === 'update' && $bisa_ubah) {
+        requireNotReadonly($data_admin_rayhanrp, 'grup.php');
+        $gid     = (int)($_POST['id'] ?? 0);
+        $nama    = trim((string)($_POST['nama_grup'] ?? ''));
+        $tingkat = (int)($_POST['tingkat'] ?? 0);
+        $jurusan = (string)($_POST['jurusan'] ?? '');
+        $desk    = trim((string)($_POST['deskripsi'] ?? ''));
+        if ($gid <= 0 || $nama === '') { $error = 'Data tidak valid.'; }
+        elseif ($tingkat < 10 || $tingkat > 12) { $error = 'Tingkat harus 10–12.'; }
+        elseif (!in_array($jurusan, $jurusan_list, true)) { $error = 'Jurusan tidak valid.'; }
+        else {
+            sirey_execute('UPDATE grup_rayhanrp SET nama_grup=?,tingkat=?,jurusan=?,deskripsi=? WHERE grup_id=?',
+                'sissi', $nama, $tingkat, $jurusan, $desk ?: null, $gid);
+            auditLog($id_pembuat,'update_grup','grup',$gid,['tingkat'=>$tingkat,'jurusan'=>$jurusan]);
+            $pesan = 'Grup berhasil diperbarui.';
+        }
 
-            if ($hasil_rayhanrp >= 0) {
-                auditLog($data_admin_rayhanrp['id'], 'update_grup', 'grup', $id_grup_rayhanrp, ['tingkat' => $tingkat_rayhanrp, 'jurusan' => $jurusan_rayhanrp]);
-                $pesan_rayhanrp = 'Grup berhasil diperbarui.';
-            } else {
-                $error_rayhanrp = 'Gagal memperbarui grup.';
-            }
+    } elseif ($aksi === 'delete' && $bisa_hapus) {
+        requireNotReadonly($data_admin_rayhanrp, 'grup.php');
+        $gid = (int)($_POST['id'] ?? 0);
+        if ($gid > 0) {
+            sirey_execute('DELETE FROM grup_rayhanrp WHERE grup_id=?','i',$gid);
+            auditLog($id_pembuat,'delete_grup','grup',$gid);
+            $pesan = 'Grup berhasil dihapus.';
         }
-    } elseif ($aksi_rayhanrp === 'delete') {
-        $id_grup_rayhanrp = (int)($_POST['id'] ?? 0);
 
-        if (!can('delete_grup', $data_admin_rayhanrp)) {
-            $error_rayhanrp = 'Anda tidak memiliki izin menghapus grup.';
-        } elseif ($id_grup_rayhanrp > 0) {
-            requireNotReadonly($data_admin_rayhanrp, 'grup.php');
-            sirey_execute('DELETE FROM grup_rayhanRP WHERE grup_id = ?', 'i', $id_grup_rayhanrp);
-            auditLog($data_admin_rayhanrp['id'], 'delete_grup', 'grup', $id_grup_rayhanrp);
-            $pesan_rayhanrp = 'Grup dihapus.';
-        } else {
-            $error_rayhanrp = 'ID grup tidak valid.';
+    } elseif ($aksi === 'delete_multiple' && $bisa_hapus) {
+        requireNotReadonly($data_admin_rayhanrp, 'grup.php');
+        $ids = array_filter(array_map('intval',(array)($_POST['selected_ids'] ?? [])));
+        $n = 0;
+        foreach ($ids as $gid) {
+            if (sirey_execute('DELETE FROM grup_rayhanrp WHERE grup_id=?','i',$gid) >= 1) $n++;
         }
-    } elseif ($aksi_rayhanrp === 'delete_multiple') {
-        $id_terpilih_rayhanrp = $_POST['selected_ids'] ?? [];
-        
-        if (!can('delete_grup', $data_admin_rayhanrp)) {
-            $error_rayhanrp = 'Anda tidak memiliki izin menghapus grup.';
-        } elseif (empty($id_terpilih_rayhanrp)) {
-            $error_rayhanrp = 'Pilih grup yang akan dihapus terlebih dahulu.';
-        } else {
-            requireNotReadonly($data_admin_rayhanrp, 'grup.php');
-            $deleted = 0;
-            $failed = 0;
-            
-            foreach ($id_terpilih_rayhanrp as $id_item_rayhanrp) {
-                $id_item_rayhanrp = (int)$id_item_rayhanrp;
-                
-                if ($id_item_rayhanrp <= 0) {
-                    $failed++;
-                    continue;
-                }
-                
-                $result = sirey_execute('DELETE FROM grup_rayhanRP WHERE grup_id = ?', 'i', $id_item_rayhanrp);
-                if ($result >= 1) {
-                    $deleted++;
-                } else {
-                    $failed++;
-                }
-            }
-            
-            if ($deleted > 0) {
-                auditLog($data_admin_rayhanrp['id'], 'bulk_delete_grup', 'grup', null, ['ids' => $id_terpilih_rayhanrp]);
-                $pesan_rayhanrp = "✓ Berhasil menghapus $deleted grup";
-                if ($failed > 0) {
-                    $pesan_rayhanrp .= " ($failed gagal)";
-                }
-            } else {
-                $error_rayhanrp = 'Tidak ada grup yang berhasil dihapus.';
-            }
-        }
+        auditLog($id_pembuat,'bulk_delete_grup','grup',null,['ids'=>$ids]);
+        $pesan = "$n grup berhasil dihapus.";
     }
 }
 
-$teks_pencarian_rayhanrp = trim((string)($_POST['search'] ?? ''));
-
-$sql = 'SELECT g.grup_id, g.nama_grup, g.tingkat, g.jurusan, g.deskripsi, g.pembuat_id, g.wali_kelas_id, g.aktif,
+// ── Query daftar grup ──
+$cari = trim((string)($_POST['search'] ?? ''));
+$sql  = 'SELECT g.grup_id,g.nama_grup,g.tingkat,g.jurusan,g.deskripsi,g.aktif,
                 a.nama_lengkap AS pembuat_nama,
-                wali.nama_lengkap AS wali_kelas,
-                COUNT(DISTINCT ga.akun_id) AS jml_anggota
-         FROM grup_rayhanRP g
-         LEFT JOIN akun_rayhanRP a ON g.pembuat_id = a.akun_id
-         LEFT JOIN akun_rayhanRP wali ON g.wali_kelas_id = wali.akun_id
-         LEFT JOIN grup_anggota_rayhanRP ga ON g.grup_id = ga.grup_id';
+                COUNT(DISTINCT ga.akun_id) AS jml_anggota,
+                COUNT(DISTINCT CASE WHEN gm.hari IS NOT NULL THEN gm.id END) AS jml_jadwal,
+                COUNT(DISTINCT t.tugas_id) AS jml_tugas
+         FROM grup_rayhanrp g
+         LEFT JOIN akun_rayhanrp a ON g.pembuat_id=a.akun_id
+         LEFT JOIN grup_anggota_rayhanrp ga ON g.grup_id=ga.grup_id
+         LEFT JOIN guru_mengajar_rayhanrp gm ON g.grup_id=gm.grup_id AND gm.aktif=1
+         LEFT JOIN tugas_rayhanrp t ON g.grup_id=t.grup_id';
 
 if ($data_admin_rayhanrp['role'] === 'guru') {
-    $sql .= ' INNER JOIN guru_mengajar_rayhanRP gm_scope ON g.grup_id = gm_scope.grup_id AND gm_scope.akun_id = ' . (int)$data_admin_rayhanrp['id'] . ' AND gm_scope.aktif = 1';
+    $sql .= ' INNER JOIN guru_mengajar_rayhanrp gm_s ON g.grup_id=gm_s.grup_id AND gm_s.akun_id='.(int)$data_admin_rayhanrp['id'].' AND gm_s.aktif=1';
 }
 
-$where_conditions_rayhanrp = [];
-$query_params_rayhanrp = [];
-$param_types_rayhanrp = '';
+$whereArr = []; $types = ''; $params = [];
+if ($cari !== '') { $whereArr[] = 'g.nama_grup LIKE ?'; $types .= 's'; $params[] = "%$cari%"; }
+if ($whereArr) $sql .= ' WHERE '.implode(' AND ', $whereArr);
+$sql .= ' GROUP BY g.grup_id ORDER BY g.nama_grup ASC';
 
-if ($teks_pencarian_rayhanrp !== '') {
-    $where_conditions_rayhanrp[] = 'g.nama_grup LIKE ?';
-    $query_params_rayhanrp[] = '%' . $teks_pencarian_rayhanrp . '%';
-    $param_types_rayhanrp .= 's';
-}
-
-if (!empty($where_conditions_rayhanrp)) {
-    $sql .= ' WHERE ' . implode(' AND ', $where_conditions_rayhanrp);
-}
-
-$sql .= ' GROUP BY g.grup_id, g.nama_grup, g.tingkat, g.jurusan, g.deskripsi, g.pembuat_id, g.wali_kelas_id, g.aktif, a.nama_lengkap, wali.nama_lengkap ORDER BY g.nama_grup ASC';
-
-if (!empty($query_params_rayhanrp)) {
-    $daftar_grup_rayhanrp = sirey_fetchAll(sirey_query($sql, $param_types_rayhanrp, ...$query_params_rayhanrp));
-} else {
-    $daftar_grup_rayhanrp = sirey_fetchAll(sirey_query($sql));
-}
+$daftarGrup = $params ? sirey_fetchAll(sirey_query($sql,$types,...$params)) : sirey_fetchAll(sirey_query($sql));
 ?>
 
-<div class="page-header">
-  <h2>🎓 Manajemen Grup / Kelas</h2>
-  <p><?php echo htmlspecialchars($deskripsi_halaman_rayhanrp); ?></p>
-</div>
-
-<?php if ($pesan_rayhanrp !== ''): ?>
-  <div class="alert alert-success">✓ <?php echo htmlspecialchars($pesan_rayhanrp); ?></div>
-<?php endif; ?>
-
-<?php if ($error_rayhanrp !== ''): ?>
-  <div class="alert alert-error">⚠️ <?php echo htmlspecialchars($error_rayhanrp); ?></div>
-<?php endif; ?>
-
-<?php if (!$bisa_tulis_grup_rayhanrp): ?>
-  <div class="alert alert-info">
-    Mode baca saja aktif. Anda tetap bisa membuka detail anggota, jadwal, dan tugas tanpa opsi perubahan data.
+<!-- Page Header -->
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h2><i class="bi bi-mortarboard-fill text-primary me-2"></i>Manajemen Grup / Kelas</h2>
+    <p><?php echo match($data_admin_rayhanrp['role']) {
+      'guru' => 'Hanya kelas yang Anda ajar yang ditampilkan. Mode baca saja.',
+      'kepala_sekolah' => 'Mode baca saja untuk pemantauan.',
+      default => 'Kelola grup, anggota, dan jadwal per kelas.'
+    }; ?></p>
   </div>
-<?php endif; ?>
-
-
-<!-- ================== MAIN TAB (DAFTAR vs BUAT) ================== -->
-<div style="display:flex; border-bottom:2px solid #dee2e6; margin-bottom:24px;">
-  <button type="button" onclick="switchMainTab('daftar')" id="maintab-daftar" 
-          style="flex:1; padding:16px; text-align:center; font-weight:bold; 
-                 color:#666; cursor:pointer; border-bottom:3px solid transparent;
-                 background:transparent; border:none; transition:all 0.3s;">
-    📋 Daftar Grup
-  </button>
-  <?php if ($bisa_buat_grup_rayhanrp): ?>
-  <button type="button" onclick="switchMainTab('buat')" id="maintab-buat"
-          style="flex:1; padding:16px; text-align:center; font-weight:bold;
-                 color:#666; cursor:pointer; border-bottom:3px solid transparent;
-                 background:transparent; border:none; transition:all 0.3s;">
-    ➕ Buat Grup Baru
-  </button>
+  <?php if ($bisa_buat): ?>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalBuat">
+      <i class="bi bi-plus-lg me-1"></i>Buat Grup Baru
+    </button>
   <?php endif; ?>
 </div>
 
+<!-- Flash -->
+<?php if ($pesan !== ''): ?>
+  <div class="alert alert-success alert-dismissible fade show alert-auto-dismiss mb-3">
+    <i class="bi bi-check-circle-fill me-2"></i><?php echo htmlspecialchars($pesan); ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+<?php endif; ?>
+<?php if ($error !== ''): ?>
+  <div class="alert alert-danger alert-dismissible fade show mb-3">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><?php echo htmlspecialchars($error); ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+<?php endif; ?>
 
-<!-- ================== TAB 1: DAFTAR GRUP ================== -->
-<div id="maincontent-daftar" style="display:block;">
-  <div class="card">
-    <div class="card-header">
-      <h3>Daftar Grup (<?php echo count($daftar_grup_rayhanrp); ?>)</h3>
-    </div>
+<?php if (!$bisa_tulis): ?>
+  <div class="alert alert-info mb-3"><i class="bi bi-info-circle me-2"></i>Mode baca saja aktif.</div>
+<?php endif; ?>
 
-    <!-- FORM PENCARIAN -->
-    <div style="padding:20px; background:#f8f9fa; border-bottom:1px solid #dee2e6;">
-      <form method="POST" id="grupSearchForm" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
-        <div style="flex:1; min-width:200px;">
-          <label class="form-label" style="display:block; font-size:14px; margin-bottom:6px;">
-            🔍 Cari Nama Grup
-          </label>
-          <input type="text" name="search" class="form-control" placeholder="Ketik nama grup/kelas..."
-                 value="<?php echo htmlspecialchars($teks_pencarian_rayhanrp); ?>" style="width:100%;">
-        </div>
-
-        <div style="display:flex; gap:8px;">
-          <button type="submit" class="btn btn-primary" style="padding:8px 16px;">🔍 Cari</button>
-          <?php if ($teks_pencarian_rayhanrp !== ''): ?>
-            <button type="button" class="btn btn-secondary" onclick="resetSearch()" style="padding:8px 16px;">✕ Reset</button>
-          <?php endif; ?>
-        </div>
+<!-- Filter + Tabel -->
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <h5><i class="bi bi-table me-2"></i>Daftar Grup <span class="badge bg-primary ms-1"><?php echo count($daftarGrup); ?></span></h5>
+    <div class="d-flex gap-2">
+      <?php if ($bisa_hapus): ?>
+        <button id="btnBulkHapus" class="btn btn-sm btn-danger d-none" onclick="submitBulkHapus()">
+          <i class="bi bi-trash me-1"></i>Hapus Terpilih (<span id="selCount">0</span>)
+        </button>
+      <?php endif; ?>
+      <!-- Search inline -->
+      <form method="POST" class="d-flex gap-2">
+        <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari nama grup…"
+               value="<?php echo htmlspecialchars($cari); ?>" style="min-width:180px;">
+        <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
+        <?php if ($cari !== ''): ?><a href="grup.php" class="btn btn-sm btn-outline-secondary">✕</a><?php endif; ?>
       </form>
     </div>
-
-    <?php if (empty($daftar_grup_rayhanrp)): ?>
-      <div class="empty-state">
-        <div class="empty-icon">🎓</div>
-        <p><?php echo $teks_pencarian_rayhanrp !== '' ? 'Tidak ada grup yang cocok dengan pencarian Anda.' : 'Belum ada grup.'; ?></p>
-      </div>
+  </div>
+  <div class="card-body p-0">
+    <?php if (empty($daftarGrup)): ?>
+      <div class="empty-state"><i class="bi bi-mortarboard"></i><p><?php echo $cari ? 'Tidak ada grup yang cocok.' : 'Belum ada grup.'; ?></p></div>
     <?php else: ?>
-      <?php if ($bisa_hapus_grup_rayhanrp): ?>
-      <div style="padding:20px; background:#f8f9fa; border-bottom:1px solid #dee2e6;">
-        <div style="display:flex; gap:12px; align-items:center;">
-          <div id="bulkDeleteSection" style="display:none; flex:1;">
-            <span id="selectedCount" style="font-weight:bold; color:#0066cc;">0 grup dipilih</span>
-          </div>
-          <form method="POST" id="bulkDeleteForm" style="display:none;" onsubmit="return confirm('Hapus grup terpilih? Semua data terkait akan ikut terhapus.')">
-            <input type="hidden" name="act" value="delete_multiple">
-            <div id="selectedIdsContainer"></div>
-            <button type="submit" class="btn btn-danger">🗑️ Hapus Terpilih</button>
-          </form>
-        </div>
-      </div>
-      <?php endif; ?>
-
-      <!-- TABEL DAFTAR KELAS (DIPERBARUI: TANPA JADWAL & TUGAS) -->
-      <table class="data-table" style="width:100%; border-collapse:collapse;">
-        <thead>
-          <tr>
-            <?php if ($bisa_hapus_grup_rayhanrp): ?>
-            <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)"></th>
-            <?php endif; ?>
-            <th>#</th>
-            <th>Nama Grup</th>
-            <th>Pembuat</th>
-            <th>Wali Kelas</th>
-            <th>Total Anggota</th>
-            <th>Status</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($daftar_grup_rayhanrp as $item_grup_rayhanrp): ?>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" id="tblGrup">
+          <thead>
             <tr>
-              <?php if ($bisa_hapus_grup_rayhanrp): ?>
-              <td style="width:40px; text-align:center;">
-                <input type="checkbox" class="grupCheckbox" value="<?php echo $item_grup_rayhanrp['grup_id']; ?>" onchange="updateBulkDeleteUI()">
-              </td>
-              <?php endif; ?>
-
-              <td style="color:var(--clr-muted); vertical-align:middle;">
-                <?php echo (int)$item_grup_rayhanrp['grup_id']; ?>
-              </td>
-
-              <td style="vertical-align:middle;">
-                <strong><?php echo htmlspecialchars($item_grup_rayhanrp['nama_grup']); ?></strong>
-                <br><small style="color:var(--clr-muted); display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                  <span class="badge badge-info">Kelas <?php echo htmlspecialchars((string)($item_grup_rayhanrp['tingkat'] ?? '')); ?></span>
-                  <span class="badge badge-secondary"><?php echo htmlspecialchars($item_grup_rayhanrp['jurusan'] ?? '-'); ?></span>
-                </small>
-              </td>
-
-              <td style="vertical-align:middle;">
-                <small style="color:#666;">
-                  <?php echo htmlspecialchars($item_grup_rayhanrp['pembuat_nama'] ?? '-'); ?>
-                </small>
-              </td>
-
-              <td style="vertical-align:middle;">
-                <span style="color:#1d4ed8; font-weight:500;">
-                  <?php echo htmlspecialchars($item_grup_rayhanrp['wali_kelas'] ?? 'Belum Ditentukan'); ?>
-                </span>
-              </td>
-
-              <td style="vertical-align:middle;">
-                <?php echo (int)$item_grup_rayhanrp['jml_anggota']; ?> siswa
-              </td>
-
-              <td style="vertical-align:middle; text-align:center;">
-                <?php if ($bisa_update_grup_rayhanrp): ?>
-                  <button type="button" class="btn btn-sm" 
-                          style="<?php echo (int)$item_grup_rayhanrp['aktif'] === 1 ? 'background:#28a745; color:white;' : 'background:#dc3545; color:white;'; ?>"
-                          onclick="toggleGrupStatus(<?php echo (int)$item_grup_rayhanrp['grup_id']; ?>, <?php echo (int)$item_grup_rayhanrp['aktif']; ?>)">
-                    <?php echo (int)$item_grup_rayhanrp['aktif'] === 1 ? '✓ Aktif' : '✕ Non-Aktif'; ?>
-                  </button>
-                <?php else: ?>
-                  <span style="<?php echo (int)$item_grup_rayhanrp['aktif'] === 1 ? 'color:#28a745; font-weight:bold;' : 'color:#dc3545; font-weight:bold;'; ?>">
-                    <?php echo (int)$item_grup_rayhanrp['aktif'] === 1 ? '✓ Aktif' : '✕ Non-Aktif'; ?>
-                  </span>
-                <?php endif; ?>
-              </td>
-
-              <td style="min-width:200px;">
-                <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-                  <button type="button" class="btn btn-info btn-sm" 
-                          onclick="openAnggotaModal(<?php echo (int)$item_grup_rayhanrp['grup_id']; ?>, <?php echo htmlspecialchars(json_encode($item_grup_rayhanrp['nama_grup']), ENT_QUOTES, 'UTF-8'); ?>)">
-                    👥 Anggota
-                  </button>
-                  
-                  <?php if ($bisa_update_grup_rayhanrp): ?>
-                  <button type="button" class="btn btn-primary btn-sm" onclick='openEditModal(<?php echo json_encode($item_grup_rayhanrp); ?>)'>
-                    ✏️ Edit
-                  </button>
-                  <?php endif; ?>
-                  
-                  <?php if ($bisa_hapus_grup_rayhanrp): ?>
-                  <form method="POST" style="display:inline" onsubmit="return confirm('Hapus grup ini?')">
-                    <input type="hidden" name="act" value="delete">
-                    <input type="hidden" name="id" value="<?php echo (int)$item_grup_rayhanrp['grup_id']; ?>">
-                    <button type="submit" class="btn btn-danger btn-sm">🗑️ Hapus</button>
-                  </form>
-                  <?php endif; ?>
-                </div>
-              </td>
+              <?php if ($bisa_hapus): ?><th style="width:40px;"><input type="checkbox" id="checkAll" class="form-check-input"></th><?php endif; ?>
+              <th>Nama Grup</th><th>Tingkat & Jurusan</th><th>Pembuat</th>
+              <th class="text-center">Anggota</th><th class="text-center">Jadwal</th><th class="text-center">Tugas</th>
+              <th class="text-center">Status</th><th class="text-center">Aksi</th>
             </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            <?php foreach ($daftarGrup as $g): ?>
+              <tr>
+                <?php if ($bisa_hapus): ?>
+                  <td><input type="checkbox" class="form-check-input grupCheck" value="<?php echo (int)$g['grup_id']; ?>" onchange="updateBulk()"></td>
+                <?php endif; ?>
+                <td>
+                  <div class="fw-600"><?php echo htmlspecialchars($g['nama_grup']); ?></div>
+                  <?php if (!empty($g['deskripsi'])): ?>
+                    <div class="text-muted" style="font-size:11px;"><?php echo htmlspecialchars($g['deskripsi']); ?></div>
+                  <?php endif; ?>
+                </td>
+                <td>
+                  <span class="badge bg-info text-dark me-1">Kelas <?php echo (int)$g['tingkat']; ?></span>
+                  <span class="badge bg-light text-dark border" style="font-size:10px;"><?php echo htmlspecialchars($g['jurusan']); ?></span>
+                </td>
+                <td class="text-muted" style="font-size:12px;"><?php echo htmlspecialchars($g['pembuat_nama'] ?? '-'); ?></td>
+                <td class="text-center"><span class="badge bg-secondary"><?php echo (int)$g['jml_anggota']; ?></span></td>
+                <td class="text-center"><span class="badge bg-secondary"><?php echo (int)$g['jml_jadwal']; ?></span></td>
+                <td class="text-center"><span class="badge bg-secondary"><?php echo (int)$g['jml_tugas']; ?></span></td>
+                <td class="text-center">
+                  <?php if ($bisa_ubah): ?>
+                    <button class="btn btn-sm <?php echo (int)$g['aktif'] ? 'btn-success' : 'btn-secondary'; ?>"
+                            onclick="toggleStatus(<?php echo (int)$g['grup_id']; ?>, <?php echo (int)$g['aktif']; ?>)">
+                      <?php echo (int)$g['aktif'] ? 'Aktif' : 'Nonaktif'; ?>
+                    </button>
+                  <?php else: ?>
+                    <span class="badge <?php echo (int)$g['aktif'] ? 'bg-success' : 'bg-secondary'; ?>"><?php echo (int)$g['aktif'] ? 'Aktif' : 'Nonaktif'; ?></span>
+                  <?php endif; ?>
+                </td>
+                <td>
+                  <div class="d-flex gap-1 justify-content-center flex-wrap">
+                    <button class="btn btn-sm btn-outline-info" title="Anggota"
+                            onclick="openModal(<?php echo (int)$g['grup_id']; ?>, <?php echo htmlspecialchars(json_encode($g['nama_grup']), ENT_QUOTES); ?>, 'anggota')">
+                      <i class="bi bi-people"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" title="Jadwal"
+                            onclick="openModal(<?php echo (int)$g['grup_id']; ?>, <?php echo htmlspecialchars(json_encode($g['nama_grup']), ENT_QUOTES); ?>, 'jadwal')">
+                      <i class="bi bi-calendar3"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" title="Tugas"
+                            onclick="openModal(<?php echo (int)$g['grup_id']; ?>, <?php echo htmlspecialchars(json_encode($g['nama_grup']), ENT_QUOTES); ?>, 'tugas')">
+                      <i class="bi bi-journal-text"></i>
+                    </button>
+                    <?php if ($bisa_ubah): ?>
+                      <button class="btn btn-sm btn-outline-primary" title="Edit"
+                              onclick='openEdit(<?php echo json_encode($g, JSON_HEX_TAG|JSON_HEX_QUOT|JSON_HEX_AMP); ?>)'>
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                    <?php endif; ?>
+                    <?php if ($bisa_hapus): ?>
+                      <form method="POST" class="m-0" data-confirm="Hapus grup '<?php echo htmlspecialchars($g['nama_grup']); ?>'? Semua data terkait ikut terhapus.">
+                        <input type="hidden" name="act" value="delete">
+                        <input type="hidden" name="id" value="<?php echo (int)$g['grup_id']; ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus"><i class="bi bi-trash"></i></button>
+                      </form>
+                    <?php endif; ?>
+                  </div>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
     <?php endif; ?>
   </div>
 </div>
 
-
-<!-- ================== TAB 2: BUAT GRUP BARU ================== -->
-<?php if ($bisa_buat_grup_rayhanrp): ?>
-<div id="maincontent-buat" style="display:none;">
-  <div class="card">
-    <div class="card-header">
-      <h3>➕ Buat Grup Baru</h3>
-    </div>
-
-    <div style="padding:20px;">
-      <form method="POST" style="max-width:620px;">
+<?php if ($bisa_buat): ?>
+<!-- MODAL BUAT GRUP -->
+<div class="modal fade" id="modalBuat" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST">
         <input type="hidden" name="act" value="create">
-
-        <div class="form-group" style="margin-bottom:16px;">
-          <label class="form-label">Nama Grup / Kelas *</label>
-          <input name="nama_grup" type="text" class="form-control" placeholder="Contoh: XII IPA 1" required>
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Buat Grup Baru</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-          <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label">Tingkat *</label>
-            <select name="tingkat" class="form-control" required>
-              <option value="">-- Pilih Tingkat --</option>
-              <option value="10">Kelas X</option>
-              <option value="11">Kelas XI</option>
-              <option value="12">Kelas XII</option>
-            </select>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nama Grup / Kelas <span class="text-danger">*</span></label>
+            <input type="text" name="nama_grup" class="form-control" placeholder="Contoh: XI PPLG A" required>
           </div>
-          <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label">Jurusan *</label>
-            <select name="jurusan" class="form-control" required>
-              <option value="">-- Pilih Jurusan --</option>
-              <option value="Teknik Pemesinan">Teknik Pemesinan</option>
-              <option value="Teknik Mekatronika">Teknik Mekatronika</option>
-              <option value="Teknik Kimia Industri">Teknik Kimia Industri</option>
-              <option value="Pengembangan Perangkat Lunak dan Gim">Pengembangan Perangkat Lunak dan Gim</option>
-              <option value="Desain Komunikasi Visual">Desain Komunikasi Visual</option>
-              <option value="Animasi">Animasi</option>
-            </select>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">Tingkat <span class="text-danger">*</span></label>
+              <select name="tingkat" class="form-select" required>
+                <option value="">— Pilih —</option>
+                <option value="10">Kelas X</option>
+                <option value="11">Kelas XI</option>
+                <option value="12">Kelas XII</option>
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Jurusan <span class="text-danger">*</span></label>
+              <select name="jurusan" class="form-select" required>
+                <option value="">— Pilih —</option>
+                <?php foreach ($jurusan_list as $j): ?>
+                  <option value="<?php echo $j; ?>"><?php echo $j; ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="mt-3">
+            <label class="form-label">Deskripsi</label>
+            <input type="text" name="deskripsi" class="form-control" placeholder="Opsional">
           </div>
         </div>
-
-        <div class="form-group" style="margin-bottom:16px;">
-          <label class="form-label">Deskripsi</label>
-          <input name="deskripsi" type="text" class="form-control" placeholder="Opsional">
-        </div>
-
-        <div class="form-group" style="margin-bottom:16px;">
-          <label class="form-label">Wali Kelas</label>
-          <select name="wali_kelas_id" class="form-control">
-            <option value="">-- Belum ditentukan --</option>
-            <?php foreach ($daftar_guru_wali_rayhanrp as $guru_wali_rayhanrp): ?>
-              <option value="<?php echo (int)$guru_wali_rayhanrp['akun_id']; ?>">
-                <?php echo htmlspecialchars((string)$guru_wali_rayhanrp['nama_lengkap']); ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-
-        <div style="margin-top:20px;">
-          <button type="submit" class="btn btn-primary">➕ Buat Grup</button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Simpan</button>
         </div>
       </form>
     </div>
@@ -791,480 +451,221 @@ if (!empty($query_params_rayhanrp)) {
 </div>
 <?php endif; ?>
 
-
-<!-- ================== EDIT MODAL ================== -->
-<div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-  <div style="background:white; padding:30px; border-radius:8px; max-width:400px; width:90%; max-height:90vh; overflow-y:auto;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-      <h3 style="margin:0;">✏️ Edit Grup</h3>
-      <button type="button" onclick="closeEditModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999;">✕</button>
-    </div>
-
-    <!-- FORM EDIT KELAS (DIPERBARUI: DENGAN WALI KELAS) -->
-    <form method="POST" id="editForm">
-      <input type="hidden" name="act" value="update">
-      <input type="hidden" name="id" id="edit_id" value="">
-
-      <div class="form-group" style="margin-bottom:20px;">
-        <label class="form-label">Nama Grup / Kelas *</label>
-        <input type="text" name="nama_grup" id="edit_nama_grup" class="form-control" required>
-      </div>
-
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-        <div class="form-group" style="margin-bottom:16px;">
-          <label class="form-label">Tingkat *</label>
-          <select name="tingkat" id="edit_tingkat" class="form-control" required>
-            <option value="">-- Pilih Tingkat --</option>
-            <option value="10">Kelas X</option>
-            <option value="11">Kelas XI</option>
-            <option value="12">Kelas XII</option>
-          </select>
+<?php if ($bisa_ubah): ?>
+<!-- MODAL EDIT -->
+<div class="modal fade" id="modalEdit" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST">
+        <input type="hidden" name="act" value="update">
+        <input type="hidden" name="id" id="edit_id">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Grup</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="form-group" style="margin-bottom:16px;">
-          <label class="form-label">Jurusan *</label>
-          <select name="jurusan" id="edit_jurusan" class="form-control" required>
-            <option value="">-- Pilih Jurusan --</option>
-            <option value="Teknik Pemesinan">Teknik Pemesinan</option>
-            <option value="Teknik Mekatronika">Teknik Mekatronika</option>
-            <option value="Teknik Kimia Industri">Teknik Kimia Industri</option>
-            <option value="Pengembangan Perangkat Lunak dan Gim">Pengembangan Perangkat Lunak dan Gim</option>
-            <option value="Desain Komunikasi Visual">Desain Komunikasi Visual</option>
-            <option value="Animasi">Animasi</option>
-          </select>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nama Grup / Kelas <span class="text-danger">*</span></label>
+            <input type="text" name="nama_grup" id="edit_nama" class="form-control" required>
+          </div>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">Tingkat <span class="text-danger">*</span></label>
+              <select name="tingkat" id="edit_tingkat" class="form-select" required>
+                <option value="">— Pilih —</option>
+                <option value="10">Kelas X</option>
+                <option value="11">Kelas XI</option>
+                <option value="12">Kelas XII</option>
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Jurusan <span class="text-danger">*</span></label>
+              <select name="jurusan" id="edit_jurusan" class="form-select" required>
+                <option value="">— Pilih —</option>
+                <?php foreach ($jurusan_list as $j): ?>
+                  <option value="<?php echo $j; ?>"><?php echo $j; ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="mt-3">
+            <label class="form-label">Deskripsi</label>
+            <input type="text" name="deskripsi" id="edit_deskripsi" class="form-control">
+          </div>
         </div>
-      </div>
-
-      <div class="form-group" style="margin-bottom:20px;">
-        <label class="form-label">Deskripsi</label>
-        <input type="text" name="deskripsi" id="edit_deskripsi" class="form-control">
-      </div>
-
-      <!-- Penambahan Form Edit Wali Kelas -->
-      <div class="form-group" style="margin-bottom:20px;">
-        <label class="form-label">Wali Kelas</label>
-        <select name="wali_kelas_id" id="edit_wali_kelas_id" class="form-control">
-          <option value="">-- Belum ditentukan --</option>
-          <?php foreach ($daftar_guru_wali_rayhanrp as $guru_wali_rayhanrp): ?>
-            <option value="<?php echo (int)$guru_wali_rayhanrp['akun_id']; ?>">
-              <?php echo htmlspecialchars((string)$guru_wali_rayhanrp['nama_lengkap']); ?>
-            </option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-
-      <div style="display:flex; gap:8px;">
-        <button type="submit" class="btn btn-primary" style="flex:1;">💾 Simpan</button>
-        <button type="button" class="btn btn-secondary" onclick="closeEditModal()" style="flex:1;">Batal</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-
-<!-- ================== ANGGOTA MODAL ================== -->
-<div id="anggotaModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; overflow-y:auto;">
-  <div style="background:white; padding:30px; border-radius:8px; max-width:900px; width:92%; margin:20px auto;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-      <h3 style="margin:0;">👥 Anggota Grup: <span id="anggota_grup_name"></span></h3>
-      <button type="button" onclick="closeAnggotaModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999;">✕</button>
-    </div>
-
-    <div id="anggotaContent" style="max-height:70vh; overflow-y:auto;">
-      <p style="text-align:center; color:#999;">Memuat data...</p>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Simpan</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
+<?php endif; ?>
 
+<!-- MODAL DETAIL (Anggota / Jadwal / Tugas) -->
+<div class="modal fade" id="modalDetail" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detailTitle">Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <!-- Tab nav -->
+      <div class="px-3 pt-3 border-bottom">
+        <ul class="nav nav-tabs" id="detailTabs">
+          <li class="nav-item">
+            <button class="nav-link active" id="tabAnggotaBtn" onclick="switchTab('anggota')">
+              <i class="bi bi-people me-1"></i>Anggota
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="tabJadwalBtn" onclick="switchTab('jadwal')">
+              <i class="bi bi-calendar3 me-1"></i>Jadwal
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="tabTugasBtn" onclick="switchTab('tugas')">
+              <i class="bi bi-journal-text me-1"></i>Tugas
+            </button>
+          </li>
+        </ul>
+      </div>
+      <div class="modal-body" id="detailBody">
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-<!-- ================== JAVASCRIPT ================== -->
+<!-- Hidden bulk delete form -->
+<form id="formBulk" method="POST" style="display:none;">
+  <input type="hidden" name="act" value="delete_multiple">
+  <div id="bulkContainer"></div>
+</form>
+
 <script>
-  const grupPagePermissions = <?php echo json_encode([
-    'userRole' => $data_admin_rayhanrp['role'],
-    'canCreateGrup' => $bisa_buat_grup_rayhanrp,
-    'canUpdateGrup' => $bisa_update_grup_rayhanrp,
-    'canDeleteGrup' => $bisa_hapus_grup_rayhanrp,
-    'canManageMembers' => $bisa_kelola_anggota_rayhanrp,
-    'canCreateJadwal' => $bisa_buat_jadwal_rayhanrp,
-    'canUpdateJadwal' => $bisa_update_jadwal_rayhanrp,
-    'canDeleteJadwal' => $bisa_hapus_jadwal_rayhanrp,
-  ], JSON_UNESCAPED_SLASHES); ?>;
+let currentGrupId = 0, currentTab = 'anggota';
 
-  function buildReadonlyNote(message) {
-    return '<div style="margin-top:20px; padding:12px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; color:#1d4ed8; font-size:13px;">' + message + '</div>';
-  }
+// ── Open modal detail ──
+function openModal(gid, gname, tab) {
+  currentGrupId = gid;
+  document.getElementById('detailTitle').textContent = gname;
+  new bootstrap.Modal(document.getElementById('modalDetail')).show();
+  switchTab(tab || 'anggota');
+}
 
-  function switchMainTab(tabName) {
-    ['daftar', 'buat'].forEach((name) => {
-      const content = document.getElementById('maincontent-' + name);
-      const tab = document.getElementById('maintab-' + name);
-      if (content) {
-        content.style.display = 'none';
-      }
-      if (tab) {
-        tab.style.borderBottom = '3px solid transparent';
-        tab.style.color = '#666';
-      }
-    });
+function switchTab(tab) {
+  currentTab = tab;
+  ['anggota','jadwal','tugas'].forEach(t => {
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn').classList.toggle('active', t === tab);
+  });
+  loadTab(tab);
+}
 
-    const targetContent = document.getElementById('maincontent-' + tabName) || document.getElementById('maincontent-daftar');
-    const targetTab = document.getElementById('maintab-' + tabName) || document.getElementById('maintab-daftar');
-
-    if (targetContent) {
-      targetContent.style.display = 'block';
-    }
-    if (targetTab) {
-      targetTab.style.borderBottom = '3px solid #0066cc';
-      targetTab.style.color = '#0066cc';
-    }
-  }
-
-  switchMainTab('daftar');
-
-  // ===== EDIT MODAL =====
-  function openEditModal(group) {
-    document.getElementById('edit_id').value = group.grup_id;
-    document.getElementById('edit_nama_grup').value = group.nama_grup;
-    document.getElementById('edit_tingkat').value = group.tingkat || '0';
-    document.getElementById('edit_jurusan').value = group.jurusan || '';
-    document.getElementById('edit_deskripsi').value = group.deskripsi || '';
-    document.getElementById('edit_wali_kelas_id').value = group.wali_kelas_id || '';
-    document.getElementById('editModal').style.display = 'flex';
-  }
-
-  function closeEditModal() {
-    document.getElementById('editModal').style.display = 'none';
-  }
-
-  const editModal = document.getElementById('editModal');
-  if (editModal) {
-    editModal.addEventListener('click', function(e) {
-      if (e.target === this) {
-        closeEditModal();
-      }
-    });
-  }
-
-  // ===== ANGGOTA MODAL =====
-  function openAnggotaModal(grupId, grupName) {
-    const modal = document.getElementById('anggotaModal');
-    const nameEl = document.getElementById('anggota_grup_name');
-    const contentEl = document.getElementById('anggotaContent');
-    
-    if (!modal || !nameEl || !contentEl) return;
-    
-    nameEl.textContent = grupName;
-    contentEl.innerHTML = '<p style="text-align:center; color:#999;">Memuat data...</p>';
-    modal.style.display = 'flex';
-    
-    const fetchUrl = './grup.php?action=get_members&grup_id=' + grupId;
-    
-    fetch(fetchUrl)
-      .then(response => {
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        return response.text();
-      })
-      .then(html => {
-        if (html.trim()) {
-          if (!grupPagePermissions.canManageMembers) {
-            contentEl.innerHTML = html + buildReadonlyNote('Mode baca saja. Penambahan atau penghapusan anggota hanya tersedia untuk admin dan kurikulum.');
-            return Promise.resolve();
-          }
-
-          return fetch('./grup.php?action=get_available_users&grup_id=' + grupId)
-            .then(r => r.text())
-            .then(usersHtml => {
-              let fullContent = html;
-              if (usersHtml.trim()) {
-                fullContent += '<hr style="margin:20px 0; border:none; border-top:2px solid #dee2e6;">';
-                fullContent += '<div style="margin-top:20px;">';
-                fullContent += '<h4 style="margin-top:0; margin-bottom:15px;">➕ Tambah Anggota</h4>';
-                fullContent += usersHtml;
-                fullContent += '</div>';
-              }
-              contentEl.innerHTML = fullContent;
-            });
-        } else {
-          contentEl.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">Tidak ada data</p>';
-        }
-      })
-      .catch(error => {
-        contentEl.innerHTML = '<p style="color:red;">❌ Error memuat data: ' + error.message + '</p>';
-      });
-  }
-
-  function closeAnggotaModal() {
-    const modal = document.getElementById('anggotaModal');
-    if (modal) modal.style.display = 'none';
-  }
-
-  (function() {
-    const modal = document.getElementById('anggotaModal');
-    if (modal) {
-      modal.addEventListener('click', function(e) {
-        if (e.target === this) closeAnggotaModal();
-      });
-    }
-  })();
-
-  // ===== FILTER & SEARCH FUNCTIONS =====
-  function filterMembers(searchTerm, grupId) {
-    const searchEl = document.getElementById('searchMembers');
-    if (searchEl) searchEl.value = searchTerm;
-    
-    const modal = document.getElementById('anggotaModal');
-    if (modal && modal.style.display === 'flex') {
-      const contentEl = document.getElementById('anggotaContent');
-      const url = './grup.php?action=get_members&grup_id=' + grupId + '&search=' + encodeURIComponent(searchTerm);
-      
-      fetch(url)
-        .then(r => r.text())
-        .then(html => {
-          let fullContent = html;
-          if (!searchTerm && grupPagePermissions.canManageMembers) {
-            return fetch('./grup.php?action=get_available_users&grup_id=' + grupId)
-              .then(r => r.text())
-              .then(usersHtml => {
-                if (usersHtml.trim()) {
-                  fullContent += '<hr style="margin:20px 0; border:none; border-top:2px solid #dee2e6;">';
-                  fullContent += '<div style="margin-top:20px;">';
-                  fullContent += '<h4 style="margin-top:0; margin-bottom:15px;">➕ Tambah Anggota</h4>';
-                  fullContent += usersHtml;
-                  fullContent += '</div>';
-                }
-                contentEl.innerHTML = fullContent;
-              });
-          } else {
-            if (!searchTerm && !grupPagePermissions.canManageMembers) {
-              fullContent += buildReadonlyNote('Mode baca saja.');
-            }
-            contentEl.innerHTML = fullContent;
-            return Promise.resolve();
-          }
-        })
-        .catch(error => {
-          contentEl.innerHTML = '<p style="color:red;">Error loading data</p>';
-        });
-    }
-  }
-
-  // ===== BULK ACTIONS =====
-  function toggleSelectAllAvailableMembers(checkbox) {
-    document.querySelectorAll('.availableMemberCheckbox').forEach((item) => {
-      item.checked = checkbox.checked;
-    });
-  }
-
-  function submitAddMembers(event, grupId) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const checked = form.querySelectorAll('.availableMemberCheckbox:checked');
-
-    if (checked.length === 0) {
-      alert('Pilih minimal satu siswa.');
-      return;
-    }
-
-    const formData = new FormData(form);
-    fetch('./grup.php?action=bulk_add_members&grup_id=' + grupId, {
-      method: 'POST',
-      body: formData
+function loadTab(tab) {
+  const body = document.getElementById('detailBody');
+  body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+  const action = tab === 'anggota' ? 'get_members' : tab === 'jadwal' ? 'get_jadwal' : 'get_tugas';
+  fetch(`./grup.php?action=${action}&grup_id=${currentGrupId}`)
+    .then(r => r.text())
+    .then(html => {
+      body.innerHTML = html;
+      // Tambah form tambah anggota jika tab anggota
+      if (tab === 'anggota') loadAddMember();
     })
-      .then(response => response.json())
-      .then(data => {
-        if (!data.success) {
-          alert(data.message || 'Gagal menambah anggota.');
-          return;
-        }
-        const grupNameEl = document.getElementById('anggota_grup_name');
-        openAnggotaModal(grupId, grupNameEl ? grupNameEl.textContent : '');
-      })
-      .catch(error => {
-        alert('Error menambah anggota.');
-      });
-  }
+    .catch(() => { body.innerHTML = '<p class="text-danger text-center py-4"><i class="bi bi-exclamation-triangle me-2"></i>Gagal memuat data.</p>'; });
+}
 
-  function submitImportMembersExcel(event, grupId) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-
-    fetch('./grup.php?action=import_members_excel&grup_id=' + grupId, {
-      method: 'POST',
-      body: formData
-    })
-      .then(response => response.json())
-      .then(data => {
-        let message = data.message || 'Import selesai.';
-        if (Array.isArray(data.errors) && data.errors.length > 0) {
-          message += '\n\n' + data.errors.join('\n');
-        }
-        alert(message);
-
-        if (data.success) {
-          const grupNameEl = document.getElementById('anggota_grup_name');
-          openAnggotaModal(grupId, grupNameEl ? grupNameEl.textContent : '');
-        }
-      })
-      .catch(error => {
-        alert('Error import Excel.');
-      });
-  }
-
-  function toggleSelectAllMembers(checkbox, grupId) {
-    const allCheckboxes = document.querySelectorAll('.memberCheckbox');
-    allCheckboxes.forEach(cb => {
-      cb.checked = checkbox.checked;
+function loadAddMember() {
+  fetch(`./grup.php?action=get_available_users&grup_id=${currentGrupId}`)
+    .then(r => r.text())
+    .then(html => {
+      if (!html.trim()) return;
+      const section = document.createElement('div');
+      section.className = 'mt-3 p-3 bg-light rounded';
+      section.innerHTML = '<label class="form-label fw-semibold">➕ Tambah Anggota</label>'
+        + '<div class="d-flex gap-2 mt-1">'
+        + html
+        + '<button class="btn btn-sm btn-success" onclick="addMember()"><i class="bi bi-plus"></i> Tambah</button>'
+        + '</div>';
+      document.getElementById('detailBody').appendChild(section);
     });
-    updateMemberBulkUI(grupId);
-  }
+}
 
-  function updateMemberBulkUI(grupId) {
-    const allCheckboxes = document.querySelectorAll('.memberCheckbox');
-    const selectedCheckboxes = document.querySelectorAll('.memberCheckbox:checked');
-    const selectAllCheckbox = document.getElementById('selectAllMembers');
-    const bulkSection = document.getElementById('bulkDeleteMembersSection');
-    const selectedCount = document.getElementById('memberSelectedCount');
-
-    if (!selectAllCheckbox || !bulkSection || !selectedCount) return;
-
-    selectAllCheckbox.checked = selectedCheckboxes.length > 0 && selectedCheckboxes.length === allCheckboxes.length;
-    selectAllCheckbox.indeterminate = selectedCheckboxes.length > 0 && selectedCheckboxes.length < allCheckboxes.length;
-
-    if (selectedCheckboxes.length > 0) {
-      bulkSection.style.display = 'block';
-      selectedCount.textContent = selectedCheckboxes.length + ' anggota dipilih';
-    } else {
-      bulkSection.style.display = 'none';
-    }
-  }
-
-  function bulkDeleteMembers(grupId) {
-    const selectedCheckboxes = document.querySelectorAll('.memberCheckbox:checked');
-    const ids = Array.from(selectedCheckboxes).map(cb => cb.value);
-    
-    if (ids.length === 0) return;
-    
-    if (!confirm('Yakin ingin menghapus ' + ids.length + ' anggota dari grup?')) return;
-    
-    const formData = new FormData();
-    ids.forEach(id => {
-      formData.append('member_ids[]', id);
+function addMember() {
+  const sel = document.getElementById('addMemberSelect');
+  if (!sel || !sel.value) return Swal.fire('Pilih anggota terlebih dahulu', '', 'warning');
+  fetch(`./grup.php?action=add_member&grup_id=${currentGrupId}&akun_id=${sel.value}`)
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) { Swal.fire({ icon:'success', title:d.message, timer:1500, showConfirmButton:false }); loadTab('anggota'); }
+      else Swal.fire({ icon:'error', title:d.message });
     });
-    
-    fetch('./grup.php?action=bulk_delete_members&grup_id=' + grupId, {
-      method: 'POST',
-      body: formData
-    })
+}
+
+function deleteMember(akunId, nama) {
+  Swal.fire({ title:`Hapus ${nama}?`, text:'Anggota akan dikeluarkan dari grup ini.', icon:'warning',
+    showCancelButton:true, confirmButtonColor:'#dc2626', confirmButtonText:'Hapus', cancelButtonText:'Batal'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    fetch(`./grup.php?action=delete_member&grup_id=${currentGrupId}&akun_id=${akunId}`)
       .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          const grupNameEl = document.getElementById('anggota_grup_name');
-          if (grupNameEl) {
-            openAnggotaModal(grupId, grupNameEl.textContent);
-          }
-        } else {
-          alert('Error: ' + data.message);
-        }
-      })
-      .catch(error => {
-        alert('Error menghapus anggota');
+      .then(d => {
+        if (d.success) { Swal.fire({ icon:'success', title:d.message, timer:1200, showConfirmButton:false }); loadTab('anggota'); }
+        else Swal.fire({ icon:'error', title:d.message });
       });
-  }
+  });
+}
 
-  function deleteMemberFromGroup(akunId, grupId, memberName) {
-    if (!confirm('Yakin ingin menghapus ' + memberName + ' dari grup ini?')) return;
-    
-    fetch('./grup.php?action=delete_member&grup_id=' + grupId + '&akun_id=' + akunId)
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          const modal = document.getElementById('anggotaModal');
-          if (modal && modal.style.display === 'flex') {
-            const grupNameEl = document.getElementById('anggota_grup_name');
-            if (grupNameEl) openAnggotaModal(grupId, grupNameEl.textContent);
-          }
-        } else {
-          alert('Error: ' + data.message);
-        }
-      })
-      .catch(error => {
-        alert('Error menghapus anggota');
-      });
-  }
-
-  // ===== TOGGLE GROUP STATUS =====
-  function toggleGrupStatus(grupId, currentStatus) {
-    const newStatus = currentStatus === 1 ? 0 : 1;
-    const statusLabel = newStatus === 1 ? 'Aktif' : 'Non-Aktif';
-    
-    if (!confirm('Ubah status grup menjadi ' + statusLabel + '?')) return;
-
-    const formData = new FormData();
-    formData.append('status', newStatus);
-
-    fetch('./grup.php?action=toggle_status&grup_id=' + grupId, {
-      method: 'POST',
-      body: formData
-    })
+// ── Toggle status grup ──
+function toggleStatus(gid, current) {
+  const newStatus = current ? 0 : 1;
+  const label = newStatus ? 'Aktif' : 'Nonaktif';
+  Swal.fire({ title:`Ubah status menjadi ${label}?`, icon:'question',
+    showCancelButton:true, confirmButtonText:'Ya', cancelButtonText:'Batal'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    const fd = new FormData(); fd.append('status', newStatus);
+    fetch(`./grup.php?action=toggle_status&grup_id=${gid}`, { method:'POST', body:fd })
       .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          location.reload();
-        } else {
-          alert('❌ Error: ' + data.message);
-        }
-      })
-      .catch(error => {
-        alert('Error mengubah status grup');
-      });
-  }
+      .then(d => { if (d.success) location.reload(); else Swal.fire({ icon:'error', title:d.message }); });
+  });
+}
 
-  // ===== GENERAL BULK CHECKBOX =====
-  function toggleSelectAll(checkbox) {
-    const allCheckboxes = document.querySelectorAll('.grupCheckbox');
-    allCheckboxes.forEach(cb => {
-      cb.checked = checkbox.checked;
-    });
-    updateBulkDeleteUI();
-  }
+// ── Edit modal ──
+function openEdit(g) {
+  document.getElementById('edit_id').value       = g.grup_id;
+  document.getElementById('edit_nama').value     = g.nama_grup;
+  document.getElementById('edit_tingkat').value  = g.tingkat;
+  document.getElementById('edit_jurusan').value  = g.jurusan;
+  document.getElementById('edit_deskripsi').value = g.deskripsi || '';
+  new bootstrap.Modal(document.getElementById('modalEdit')).show();
+}
 
-  function updateBulkDeleteUI() {
-    const allCheckboxes = document.querySelectorAll('.grupCheckbox');
-    const selectedCheckboxes = document.querySelectorAll('.grupCheckbox:checked');
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    const bulkDeleteSection = document.getElementById('bulkDeleteSection');
-    const bulkDeleteForm = document.getElementById('bulkDeleteForm');
-    const selectedCount = document.getElementById('selectedCount');
-    const selectedIdsContainer = document.getElementById('selectedIdsContainer');
-
-    if (!selectAllCheckbox || !bulkDeleteSection || !bulkDeleteForm || !selectedCount || !selectedIdsContainer) return;
-
-    selectAllCheckbox.checked = selectedCheckboxes.length > 0 && selectedCheckboxes.length === allCheckboxes.length;
-    selectAllCheckbox.indeterminate = selectedCheckboxes.length > 0 && selectedCheckboxes.length < allCheckboxes.length;
-
-    if (selectedCheckboxes.length > 0) {
-      bulkDeleteSection.style.display = 'block';
-      bulkDeleteForm.style.display = 'block';
-      selectedCount.textContent = selectedCheckboxes.length + ' grup dipilih';
-
-      selectedIdsContainer.innerHTML = '';
-      selectedCheckboxes.forEach(cb => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'selected_ids[]';
-        input.value = cb.value;
-        selectedIdsContainer.appendChild(input);
-      });
-    } else {
-      bulkDeleteSection.style.display = 'none';
-      bulkDeleteForm.style.display = 'none';
-      selectedIdsContainer.innerHTML = '';
-    }
-  }
-
-  function resetSearch() {
-    document.querySelector('input[name="search"]').value = '';
-    document.getElementById('grupSearchForm')?.submit();
-  }
+// ── Bulk delete ──
+<?php if ($bisa_hapus): ?>
+document.getElementById('checkAll')?.addEventListener('change', function () {
+  document.querySelectorAll('.grupCheck').forEach(cb => cb.checked = this.checked);
+  updateBulk();
+});
+function updateBulk() {
+  const n = document.querySelectorAll('.grupCheck:checked').length;
+  document.getElementById('selCount').textContent = n;
+  document.getElementById('btnBulkHapus').classList.toggle('d-none', n === 0);
+}
+function submitBulkHapus() {
+  const ids = [...document.querySelectorAll('.grupCheck:checked')].map(cb => cb.value);
+  Swal.fire({ title:`Hapus ${ids.length} grup?`, text:'Semua data terkait ikut terhapus!', icon:'warning',
+    showCancelButton:true, confirmButtonColor:'#dc2626', confirmButtonText:'Ya Hapus', cancelButtonText:'Batal'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    const c = document.getElementById('bulkContainer');
+    c.innerHTML = ids.map(id => `<input type="hidden" name="selected_ids[]" value="${id}">`).join('');
+    document.getElementById('formBulk').submit();
+  });
+}
+<?php endif; ?>
 </script>
 
 <?php layoutEnd(); ?>

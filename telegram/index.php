@@ -1,96 +1,157 @@
 <?php
 declare(strict_types=1);
 
+// ================================================================
+// index.php – Entry point webhook Bot SiRey
+// Semua update dari Telegram masuk ke sini.
+// ================================================================
+
 require_once __DIR__ . '/../koneksi.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/handler/command.php';
 require_once __DIR__ . '/handler/state.php';
 require_once __DIR__ . '/handler/menu.php';
 
+// Pastikan skema DB sudah lengkap
 ensureSireySchema();
 
-$input = json_decode(file_get_contents('php://input'), true);
+// ----------------------------------------------------------------
+// 1. Baca dan parse update dari Telegram
+// ----------------------------------------------------------------
+$rawInput = file_get_contents('php://input');
+$update   = json_decode($rawInput, true);
 
-$msg      = $input['message'] ?? $input['callback_query']['message'] ?? null;
-$callback = $input['callback_query'] ?? null;
+if (!is_array($update)) {
+    // Bukan request valid dari Telegram
+    exit;
+}
 
-if (!$msg) exit;
+// ----------------------------------------------------------------
+// 2. Ekstrak data pesan dan callback_query
+// ----------------------------------------------------------------
+$msg      = null;
+$callback = null;
 
-$chat   = (int)($msg['chat']['id']);
-$text   = trim($msg['text'] ?? ($callback ? $callback['data'] : ''));
-$callId = $callback['id'] ?? null;
+if (!empty($update['callback_query'])) {
+    $callback = $update['callback_query'];
+    $msg      = $callback['message'] ?? null;
+} elseif (!empty($update['message'])) {
+    $msg = $update['message'];
+}
 
-if ($callId) answerCallback($callId);
+// Tidak ada pesan sama sekali → abaikan
+if (!is_array($msg)) {
+    exit;
+}
 
-// Ambil state & user
-$state = getState($chat) ?? ['step' => 'init'];
-$step  = $state['step'] ?? 'init';
+// ----------------------------------------------------------------
+// 3. Ekstrak info dasar
+// ----------------------------------------------------------------
+$chatId    = (int) ($msg['chat']['id'] ?? 0);
+$messageId = (int) ($msg['message_id'] ?? 0);
+$callId    = $callback['id'] ?? null;
 
-$user = null;
-if (!empty($state['user_cache']) && is_array($state['user_cache'])) {
-    $userDb = getRegisteredUser($chat, (string)($state['session_token'] ?? ''));
-    if ($userDb) {
+// Teks pesan: dari pesan biasa atau dari tombol callback
+$text = '';
+if (!empty($callback)) {
+    $text = trim((string) ($callback['data'] ?? ''));
+} elseif (!empty($msg['text'])) {
+    $text = trim((string) $msg['text']);
+}
+
+if ($chatId <= 0) {
+    exit;
+}
+
+// Jawab callback_query segera agar tombol tidak loading lama
+if ($callId !== null) {
+    answerCallback($callId);
+}
+
+// ----------------------------------------------------------------
+// 4. Load state percakapan dan data user
+// ----------------------------------------------------------------
+$state = getState($chatId) ?? ['step' => 'init'];
+$step  = (string) ($state['step'] ?? 'init');
+$user  = null;
+
+if (!empty($state['user_cache']) && is_array($state['user_cache']) && !empty($state['session_token'])) {
+    // User sudah login: validasi session masih aktif di DB
+    $userDb = getRegisteredUser($chatId, (string) $state['session_token']);
+
+    if ($userDb !== null) {
+        // Merge data DB dengan cache (cache bisa punya data extra seperti tugas dll)
         $user = array_merge($userDb, $state['user_cache']);
-    } elseif (!in_array($step, ['ask_nis', 'ask_password'], true)) {
-        setState($chat, ['step' => 'ask_nis']);
-        sendMsgRemoveKeyboard($chat, "Sesi Anda sudah tidak aktif karena akun ini login di perangkat lain.\n\nKetik /start untuk login kembali.");
-        exit;
+    } else {
+        // Session tidak valid (mungkin login di tempat lain)
+        if (!in_array($step, ['ask_nis', 'ask_password'], true)) {
+            setState($chatId, ['step' => 'ask_nis']);
+            sendMsgRemoveKeyboard(
+                $chatId,
+                "⚠️ Sesi Anda sudah berakhir karena akun ini login di perangkat lain.\n\n"
+                . "Silakan login kembali. Masukkan *NIS/NIP* Anda:"
+            );
+            exit;
+        }
     }
 } else {
-    $user = getRegisteredUser($chat);
-    if ($user && $step !== 'ask_nis' && $step !== 'ask_password') {
+    // Tidak ada cache: coba ambil dari DB tanpa token (saat awal)
+    $user = getRegisteredUser($chatId);
+
+    if ($user !== null && !in_array($step, ['ask_nis', 'ask_password'], true)) {
+        // Simpan cache agar request berikutnya lebih cepat
         $state['user_cache'] = [
             'akun_id'      => $user['akun_id'],
             'nama_lengkap' => $user['nama_lengkap'],
             'role'         => $user['role'],
             'nis_nip'      => $user['nis_nip'],
         ];
-        setState($chat, $state);
+        setState($chatId, $state);
     }
 }
 
-// ── HANDLE FILE/FOTO UPLOAD ──────────────────────────────────────────────────
-// PENTING: Kita hanya simpan file_id ke state — TIDAK download file di sini.
-// Download dilakukan nanti saat user tekan "✅ Kirim" di state kumpul_konfirmasi_file.
-// Ini mencegah timeout webhook Telegram (download bisa makan waktu >5 detik
-// sehingga Telegram retry dan tombol konfirmasi muncul terlambat).
-if ($step === 'kumpul_input_file' && $user) {
+// ----------------------------------------------------------------
+// 5. Handle upload file/foto (pengumpulan tugas)
+//    Ini harus dicek sebelum handler lain agar tidak terlewat
+// ----------------------------------------------------------------
+if ($step === 'kumpul_input_file' && $user !== null) {
     $fileId   = null;
     $fileType = null;
     $fileName = null;
 
     if (!empty($msg['document'])) {
         $doc      = $msg['document'];
-        $fileId   = $doc['file_id'];
+        $fileId   = (string) $doc['file_id'];
         $fileType = 'document';
-        $fileName = $doc['file_name'] ?? ('dokumen_' . time());
+        $fileName = (string) ($doc['file_name'] ?? 'dokumen_' . time());
+
     } elseif (!empty($msg['photo']) && is_array($msg['photo'])) {
-        // Foto datang sebagai array ukuran berbeda — ambil yang terbesar (index terakhir)
+        // Foto datang sebagai array: ambil resolusi terbesar (index terakhir)
         $foto     = $msg['photo'][count($msg['photo']) - 1];
-        $fileId   = $foto['file_id'];
+        $fileId   = (string) $foto['file_id'];
         $fileType = 'photo';
         $fileName = 'foto_' . date('Ymd_His') . '.jpg';
     }
 
-    if ($fileId) {
+    if ($fileId !== null) {
         if (empty($state['tugas_id'])) {
-            sendMsg($chat, "❌ Info tugas tidak ditemukan. Silakan pilih tugas kembali.");
+            sendMsg($chatId, "❌ Info tugas tidak ditemukan. Silakan pilih tugas kembali dari menu.");
             exit;
         }
 
-        $tugas = $state['tugas'] ?? [];
-
-        // Simpan file_id — konfirmasi muncul instan tanpa tunggu download
-        setState($chat, [
-            'step'       => 'kumpul_konfirmasi_file',
-            'tugas_id'   => (int)$state['tugas_id'],
-            'tugas'      => $tugas,
-            'file_id'    => $fileId,
-            'file_type'  => $fileType,
-            'file_nama'  => $fileName,
+        // Simpan file_id ke state, unduh nanti saat konfirmasi
+        // (menghindari timeout webhook karena download bisa lama)
+        setState($chatId, [
+            'step'        => 'kumpul_konfirmasi_file',
+            'tugas_id'    => (int) $state['tugas_id'],
+            'tugas'       => $state['tugas'] ?? [],
+            'file_id'     => $fileId,
+            'file_type'   => $fileType,
+            'file_nama'   => $fileName,
             'tipe_kumpul' => $state['tipe_kumpul'] ?? 'baru',
-            'user_cache' => [
+            'user_cache'  => [
                 'akun_id'      => $user['akun_id'],
                 'nama_lengkap' => $user['nama_lengkap'],
                 'role'         => $user['role'],
@@ -98,31 +159,60 @@ if ($step === 'kumpul_input_file' && $user) {
             ],
         ]);
 
+        $tugas = $state['tugas'] ?? [];
         $pesan = "✅ *Konfirmasi Pengumpulan File*\n\n"
                . "📝 Tugas: *{$tugas['judul']}*\n"
                . "📎 File: {$fileName}\n"
-               . "⏰ Waktu: " . date('d/m/Y H:i') . "\n\n"
-               . "Apakah ingin mengumpulkan file ini?";
+               . "⏰ " . date('d/m/Y H:i') . "\n\n"
+               . "Kirim file ini sebagai jawaban?";
 
-        sendMsg($chat, $pesan, [['✅ Kirim', '❌ Batal']]);
+        sendMsg($chatId, $pesan, [['✅ Kirim', '❌ Batal']]);
         exit;
     }
 
-    // Ada teks (misal tombol Kembali) — teruskan ke handler bawah
-    // Tidak ada teks dan tidak ada file → beri peringatan
+    // Ada teks (misalnya tombol Kembali) → teruskan ke handler di bawah
     if (empty($text)) {
-        sendMsg($chat, "❌ Silakan kirim file atau foto.");
+        sendMsg($chatId, "❌ Silakan kirim file atau foto sebagai jawaban.");
         exit;
     }
 }
 
-// Jalankan handler secara berurutan
-if (handleCommand($text, $chat, $user)) exit;
-if (handleState($step, $text, $chat, $state, $user)) exit;
-if ($user && handleMenu($text, $chat, $user)) exit;
+// ----------------------------------------------------------------
+// 6. Jalankan handler secara berurutan
+//    Setiap handler mengembalikan true jika sudah menangani request
+// ----------------------------------------------------------------
 
-// Belum login → minta login
-if (!$user) {
-    setState($chat, ['step' => 'ask_nis']);
-    sendMsg($chat, "👋 Selamat datang di *Bot SiRey*!\n\nSilakan login terlebih dahulu.\n\nMasukkan *NIS/NIP* Anda:");
+// Handler 1: Perintah slash (/start, /logout, /batal)
+if (handleCommand($text, $chatId, $user)) {
+    exit;
+}
+
+// Handler 2: State percakapan (alur login, buat tugas, kumpul tugas, dll)
+if (handleState($step, $text, $chatId, $state, $user)) {
+    exit;
+}
+
+// Handler 3: Menu utama (hanya jika sudah login)
+if ($user !== null && handleMenu($text, $chatId, $user)) {
+    exit;
+}
+
+// ----------------------------------------------------------------
+// 7. Fallback: belum login atau pesan tidak dikenali
+// ----------------------------------------------------------------
+if ($user === null) {
+    setState($chatId, ['step' => 'ask_nis']);
+    sendMsgRemoveKeyboard(
+        $chatId,
+        "👋 Selamat datang di *Bot SiRey*!\n\n"
+        . "Silakan login untuk menggunakan bot ini.\n\n"
+        . "Masukkan *NIS/NIP* Anda:"
+    );
+} else {
+    // User sudah login tapi pesan tidak dikenali
+    sendMsg(
+        $chatId,
+        "❓ Perintah tidak dikenali.\n\nGunakan tombol menu di bawah untuk navigasi.",
+        mainKeyboard((string) $user['role'])
+    );
 }

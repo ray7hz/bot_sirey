@@ -1,1440 +1,1086 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Tangani semua step percakapan (state machine).
- * Return true jika sudah ditangani.
- */
-function handleState(string $step, string $text, int $chat, array $state, ?array $user): bool {
+// ================================================================
+// handler/state.php
+// Menangani alur percakapan beruntun (state machine).
+// Mengembalikan true jika step sudah ditangani.
+// ================================================================
 
-    // ── LOGIN FLOW ──────────────────────────────────────────────────────────
-
+function handleState(string $step, string $text, int $chatId, array $state, ?array $user): bool
+{
+    // ── LOGIN: MINTA NIS/NIP ─────────────────────────────────────
     if ($step === 'ask_nis') {
         if ($text === '') {
-            sendMsg($chat, "Masukkan *NIS/NIP* Anda:");
+            sendMsg($chatId, "Masukkan *NIS/NIP* Anda:");
             return true;
         }
-        setState($chat, ['step' => 'ask_password', 'nis' => $text]);
-        sendMsg($chat, "🔑 Masukkan *password* Anda:");
+
+        setState($chatId, ['step' => 'ask_password', 'nis' => $text]);
+        sendMsg($chatId, "🔑 Masukkan *password* Anda:");
         return true;
     }
 
+    // ── LOGIN: MINTA PASSWORD ────────────────────────────────────
     if ($step === 'ask_password') {
-        $akun = sirey_fetch(sirey_query(
-            'SELECT akun_id, nis_nip, password, role, nama_lengkap
-             FROM akun_rayhanRP WHERE nis_nip = ? LIMIT 1',
-            's', $state['nis'] ?? ''
+        $nis   = (string) ($state['nis'] ?? '');
+        $akun  = sirey_fetch(sirey_query(
+            'SELECT akun_id, nis_nip, password, role, nama_lengkap, aktif
+             FROM akun_rayhanrp WHERE nis_nip = ? LIMIT 1',
+            's',
+            $nis
         ));
 
-        if (!$akun || !verifyPassword($akun, $text)) {
-            setState($chat, ['step' => 'ask_nis']);
-            sendMsg($chat, "❌ NIS/NIP atau password salah.\n\nCoba lagi, masukkan *NIS/NIP*:");
+        $loginOk = $akun !== null
+            && (int) $akun['aktif'] === 1
+            && in_array($akun['role'], ['guru', 'siswa', 'admin', 'kurikulum', 'kepala_sekolah'], true)
+            && verifyPassword($akun, $text);
+
+        if (!$loginOk) {
+            setState($chatId, ['step' => 'ask_nis']);
+            sendMsg(
+                $chatId,
+                "❌ NIS/NIP atau password salah, atau akun tidak aktif.\n\n"
+                . "Coba lagi. Masukkan *NIS/NIP* Anda:"
+            );
             return true;
         }
 
-        $sessionToken = createTelegramLoginSession((int)$akun['akun_id'], $chat);
+        $sessionToken = createTelegramLoginSession((int) $akun['akun_id'], $chatId);
+        $sapaan       = sapaanWaktu();
+        $labelRole    = labelRole((string) $akun['role']);
 
-        setState($chat, [
-            'step'       => 'menu',
+        setState($chatId, [
+            'step'          => 'menu',
             'session_token' => $sessionToken,
-            'user_cache' => [
-                'akun_id'        => $akun['akun_id'],
-                'nama_lengkap'   => $akun['nama_lengkap'],
-                'role'           => $akun['role'],
-                'nis_nip'        => $akun['nis_nip'],
+            'user_cache'    => [
+                'akun_id'      => $akun['akun_id'],
+                'nama_lengkap' => $akun['nama_lengkap'],
+                'role'         => $akun['role'],
+                'nis_nip'      => $akun['nis_nip'],
             ],
         ]);
+
         sendMsg(
-            $chat,
-            "✅ Login berhasil!\n\nHalo, *{$akun['nama_lengkap']}* 👋\n\nPilih menu di bawah:",
-            mainKeyboard($akun['role'])
+            $chatId,
+            "✅ *Login berhasil!*\n\n"
+            . "{$sapaan}, *{$akun['nama_lengkap']}*! 👋\n"
+            . "Role: _{$labelRole}_\n\n"
+            . "Silakan pilih menu di bawah ini:",
+            mainKeyboard((string) $akun['role'])
         );
+
         return true;
     }
 
-    // ── FORM BUAT TUGAS (khusus guru) ───────────────────────────────────────
+    // Semua state di bawah ini memerlukan user sudah login
+    if ($user === null) {
+        return false;
+    }
 
+    $role = (string) $user['role'];
+    $uid  = (int)    $user['akun_id'];
+
+    // ── BUAT TUGAS: PILIH MAPEL ──────────────────────────────────
     if ($step === 'tugas_pilih_mapel') {
-        // user memilih mapel dari keyboard
         if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'        => $user['akun_id'],
-                    'nama_lengkap'   => $user['nama_lengkap'],
-                    'role'           => $user['role'],
-                    'nis_nip'        => $user['nis_nip'],
-                ],
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
-            return true;
+            return _kembaliMenu($chatId, $user);
         }
 
         $mapel = sirey_fetch(sirey_query(
-            'SELECT matpel_id, nama FROM mata_pelajaran_rayhanRP WHERE nama = ? LIMIT 1',
-            's', $text
+            'SELECT matpel_id, nama FROM mata_pelajaran_rayhanrp WHERE nama = ? AND aktif = 1 LIMIT 1',
+            's',
+            $text
         ));
 
         if (!$mapel) {
-            sendMsg($chat, "❌ Mapel tidak valid. Pilih dari daftar.");
+            sendMsg($chatId, "❌ Mata pelajaran tidak valid. Pilih dari tombol yang tersedia.");
             return true;
         }
 
-        $kelasList = getKelasGuruByMatpel((int)$user['akun_id'], (int)$mapel['matpel_id']);
+        $kelasList = getKelasGuruByMatpel($uid, (int) $mapel['matpel_id']);
+
         if (empty($kelasList)) {
-            sendMsg($chat, "❌ Anda tidak mengajar kelas manapun untuk mapel ini.");
+            sendMsg($chatId, "❌ Anda tidak mengajar kelas manapun untuk mata pelajaran ini.");
             return true;
         }
 
-        $kelasKeyboard = array_chunk(array_map(fn($k) => $k['nama_grup'], $kelasList), 2);
-        $kelasKeyboard[] = ['🔙 Kembali ke Menu'];
+        $keyboard   = array_chunk(array_map(fn($k) => $k['nama_grup'], $kelasList), 2);
+        $keyboard[] = ['🔙 Kembali ke Menu'];
 
-        setState($chat, [
+        setState($chatId, array_merge($state, [
             'step'       => 'tugas_pilih_kelas',
-            'matpel_id'  => (int)$mapel['matpel_id'],
+            'matpel_id'  => (int) $mapel['matpel_id'],
             'matpel'     => $mapel['nama'],
-            'user_cache' => [
-                'akun_id'        => $user['akun_id'],
-                'nama_lengkap'   => $user['nama_lengkap'],
-                'role'           => $user['role'],
-                'nis_nip'        => $user['nis_nip'],
-            ],
-        ]);
-        sendMsg($chat, "Pilih *kelas* untuk tugas ini:", $kelasKeyboard);
+            'user_cache' => _buildUserCache($user),
+        ]));
+
+        sendMsg($chatId, "Pilih *kelas* untuk tugas *{$mapel['nama']}*:", $keyboard);
         return true;
     }
 
+    // ── BUAT TUGAS: PILIH KELAS ──────────────────────────────────
     if ($step === 'tugas_pilih_kelas') {
         if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'        => $user['akun_id'],
-                    'nama_lengkap'   => $user['nama_lengkap'],
-                    'role'           => $user['role'],
-                    'nis_nip'        => $user['nis_nip'],
-                ],
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
-            return true;
+            return _kembaliMenu($chatId, $user);
         }
 
         $kelas = sirey_fetch(sirey_query(
             'SELECT g.grup_id, g.nama_grup
-             FROM grup_rayhanRP g
-             INNER JOIN guru_mengajar_rayhanRP gm ON g.grup_id = gm.grup_id
-             WHERE g.nama_grup = ? AND gm.akun_id = ? AND gm.matpel_id = ? LIMIT 1',
-            'sii', $text, (int)$user['akun_id'], (int)($state['matpel_id'] ?? 0)
+             FROM grup_rayhanrp g
+             INNER JOIN guru_mengajar_rayhanrp gm ON g.grup_id = gm.grup_id
+             WHERE g.nama_grup = ? AND gm.akun_id = ? AND gm.matpel_id = ? AND gm.aktif = 1 LIMIT 1',
+            'sii',
+            $text,
+            $uid,
+            (int) ($state['matpel_id'] ?? 0)
         ));
 
         if (!$kelas) {
-            sendMsg($chat, "❌ Kelas tidak valid.");
+            sendMsg($chatId, "❌ Kelas tidak valid. Pilih dari tombol yang tersedia.");
             return true;
         }
 
-        setState($chat, array_merge($state, [
+        setState($chatId, array_merge($state, [
             'step'       => 'tugas_input_judul',
-            'grup_id'    => (int)$kelas['grup_id'],
+            'grup_id'    => (int) $kelas['grup_id'],
             'kelas'      => $kelas['nama_grup'],
-            'user_cache' => [
-                'akun_id'        => $user['akun_id'],
-                'nama_lengkap'   => $user['nama_lengkap'],
-                'role'           => $user['role'],
-                'nis_nip'        => $user['nis_nip'],
-            ],
+            'user_cache' => _buildUserCache($user),
         ]));
-        sendMsgRemoveKeyboard($chat,
-            "📝 Mapel: *{$state['matpel']}*\n🎓 Kelas: *{$kelas['nama_grup']}*\n\nMasukkan *judul tugas*:"
+
+        sendMsgRemoveKeyboard(
+            $chatId,
+            "📚 Mapel : *{$state['matpel']}*\n"
+            . "🎓 Kelas : *{$kelas['nama_grup']}*\n\n"
+            . "Masukkan *judul tugas*:"
         );
+
         return true;
     }
 
+    // ── BUAT TUGAS: INPUT JUDUL ──────────────────────────────────
     if ($step === 'tugas_input_judul') {
-        if (strlen($text) < 3) {
-            sendMsg($chat, "Judul terlalu pendek. Masukkan judul yang jelas:");
+        if (mb_strlen($text) < 3) {
+            sendMsg($chatId, "❌ Judul terlalu pendek (minimal 3 karakter). Coba lagi:");
             return true;
         }
-        setState($chat, array_merge($state, [
+
+        setState($chatId, array_merge($state, [
             'step'       => 'tugas_input_deskripsi',
             'judul'      => $text,
-            'user_cache' => [
-                'akun_id'        => $user['akun_id'],
-                'nama_lengkap'   => $user['nama_lengkap'],
-                'role'           => $user['role'],
-                'nis_nip'        => $user['nis_nip'],
-            ],
+            'user_cache' => _buildUserCache($user),
         ]));
-        sendMsg($chat, "Masukkan *deskripsi tugas* (atau ketik `-` untuk skip):");
+
+        sendMsg($chatId, "Masukkan *deskripsi tugas*:\n\n_(Ketik `-` untuk melewati)_");
         return true;
     }
 
+    // ── BUAT TUGAS: INPUT DESKRIPSI ──────────────────────────────
     if ($step === 'tugas_input_deskripsi') {
         $deskripsi = $text === '-' ? '' : $text;
-        setState($chat, array_merge($state, [
+
+        setState($chatId, array_merge($state, [
             'step'       => 'tugas_input_deadline',
             'deskripsi'  => $deskripsi,
-            'user_cache' => [
-                'akun_id'        => $user['akun_id'],
-                'nama_lengkap'   => $user['nama_lengkap'],
-                'role'           => $user['role'],
-                'nis_nip'        => $user['nis_nip'],
-            ],
+            'user_cache' => _buildUserCache($user),
         ]));
-        sendMsg($chat, "Masukkan *deadline* tugas:\nFormat: `DD/MM/YYYY HH:MM`\nContoh: `25/12/2025 23:59`");
+
+        sendMsg(
+            $chatId,
+            "Masukkan *deadline* tugas:\n\n"
+            . "Format: `DD/MM/YYYY HH:MM`\n"
+            . "Contoh: `25/12/2025 23:59`"
+        );
+
         return true;
     }
 
+    // ── BUAT TUGAS: INPUT DEADLINE ───────────────────────────────
     if ($step === 'tugas_input_deadline') {
         $dt = DateTimeImmutable::createFromFormat('d/m/Y H:i', $text);
+
         if (!$dt) {
-            sendMsg($chat, "❌ Format salah. Gunakan format: `DD/MM/YYYY HH:MM`\nContoh: `25/12/2025 23:59`");
+            sendMsg(
+                $chatId,
+                "❌ Format salah. Gunakan: `DD/MM/YYYY HH:MM`\n"
+                . "Contoh: `25/12/2025 23:59`"
+            );
             return true;
         }
+
         if ($dt->getTimestamp() < time()) {
-            sendMsg($chat, "❌ Deadline tidak boleh di masa lalu. Coba lagi:");
+            sendMsg($chatId, "❌ Deadline tidak boleh di masa lalu. Masukkan tanggal yang akan datang:");
             return true;
         }
 
-        // Konfirmasi sebelum simpan
-        $konfirmasi = "✅ *Konfirmasi Tugas*\n\n"
-            . "📚 Mapel: {$state['matpel']}\n"
-            . "🎓 Kelas: {$state['kelas']}\n"
-            . "📝 Judul: {$state['judul']}\n"
-            . ($state['deskripsi'] ? "📋 Deskripsi: {$state['deskripsi']}\n" : '')
-            . "📅 Deadline: " . $dt->format('d/m/Y H:i') . "\n\n"
-            . "Kirim tugas ini?";
+        $preview = "✅ *Konfirmasi Tugas Baru*\n\n"
+                 . "📚 Mapel    : {$state['matpel']}\n"
+                 . "🎓 Kelas    : {$state['kelas']}\n"
+                 . "📝 Judul    : {$state['judul']}\n"
+                 . (($state['deskripsi'] ?? '') !== '' ? "📋 Deskripsi: {$state['deskripsi']}\n" : '')
+                 . "📅 Deadline : " . $dt->format('d/m/Y H:i') . "\n\n"
+                 . "Buat tugas ini?";
 
-        setState($chat, array_merge($state, [
+        setState($chatId, array_merge($state, [
             'step'       => 'tugas_konfirmasi',
             'tenggat'    => $dt->format('Y-m-d H:i:s'),
-            'user_cache' => [
-                'akun_id'        => $user['akun_id'],
-                'nama_lengkap'   => $user['nama_lengkap'],
-                'role'           => $user['role'],
-                'nis_nip'        => $user['nis_nip'],
-            ],
+            'user_cache' => _buildUserCache($user),
         ]));
-        sendMsg($chat, $konfirmasi, [['✅ Ya, Kirim', '❌ Batal']]);
+
+        sendMsg($chatId, $preview, [['✅ Ya, Buat', '❌ Batal']]);
         return true;
     }
 
+    // ── BUAT TUGAS: KONFIRMASI ───────────────────────────────────
     if ($step === 'tugas_konfirmasi') {
         if ($text === '❌ Batal') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'        => $user['akun_id'],
-                    'nama_lengkap'   => $user['nama_lengkap'],
-                    'role'           => $user['role'],
-                    'nis_nip'        => $user['nis_nip'],
-                ],
-            ]);
-            sendMsg($chat, "↩️ Dibatalkan.", mainKeyboard($user['role']));
-            return true;
+            return _kembaliMenu($chatId, $user);
         }
-        if ($text === '✅ Ya, Kirim') {
+
+        if ($text === '✅ Ya, Buat') {
             $ok = simpanTugasBot([
-                'grup_id'    => (int)$state['grup_id'],
-                'judul'      => $state['judul'],
-                'deskripsi'  => $state['deskripsi'] ?? '',
-                'matpel_id'  => (int)$state['matpel_id'],
-                'tenggat'    => $state['tenggat'],
-                'pembuat_id' => (int)$user['akun_id'],
+                'grup_id'    => (int)    $state['grup_id'],
+                'judul'      => (string) $state['judul'],
+                'deskripsi'  => (string) ($state['deskripsi'] ?? ''),
+                'matpel_id'  => (int)    $state['matpel_id'],
+                'tenggat'    => (string) $state['tenggat'],
+                'pembuat_id' => $uid,
             ]);
 
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'        => $user['akun_id'],
-                    'nama_lengkap'   => $user['nama_lengkap'],
-                    'role'           => $user['role'],
-                    'nis_nip'        => $user['nis_nip'],
-                ],
-            ]);
+            _resetKeMenu($chatId, $user);
+
             if ($ok) {
-                sendMsg($chat, "✅ *Tugas berhasil dibuat!*\n\nSiswa sudah mendapat notifikasi.", mainKeyboard($user['role']));
+                sendMsg(
+                    $chatId,
+                    "✅ *Tugas berhasil dibuat!*\n\nSiswa sudah mendapat notifikasi. 📬",
+                    mainKeyboard($role)
+                );
             } else {
-                sendMsg($chat, "❌ Gagal menyimpan tugas. Coba lagi.", mainKeyboard($user['role']));
+                sendMsg($chatId, "❌ Gagal menyimpan tugas. Silakan coba lagi.", mainKeyboard($role));
             }
+
             return true;
         }
-        sendMsg($chat, "Pilih: *✅ Ya, Kirim* atau *❌ Batal*");
+
+        sendMsg($chatId, "Pilih: *✅ Ya, Buat* atau *❌ Batal*", [['✅ Ya, Buat', '❌ Batal']]);
         return true;
     }
 
-    // ── KUMPULKAN TUGAS - PILIH TUGAS ───────────────────────────────────────
-
+    // ── KUMPULKAN TUGAS: PILIH TUGAS ─────────────────────────────
     if ($step === 'kumpul_pilih_tugas') {
-        // Handle back button first
         if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'      => $user['akun_id'],
-                    'nama_lengkap' => $user['nama_lengkap'],
-                    'role'         => $user['role'],
-                    'nis_nip'      => $user['nis_nip'],
-                ],
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
-            return true;
+            return _kembaliMenu($chatId, $user);
         }
 
-        // User input nomor tugas
-        $no = (int)$text;
-        $daftarTugas = $state['daftar_tugas'] ?? [];
+        $daftarTugas = (array) ($state['daftar_tugas'] ?? []);
+        $no          = (int) $text;
+
         if ($no < 1 || $no > count($daftarTugas)) {
-            sendMsg($chat, "❌ Nomor tidak valid. Pilih dari daftar.");
+            sendMsg($chatId, "❌ Nomor tidak valid. Pilih nomor dari daftar.");
             return true;
         }
 
-        $tugas = $daftarTugas[$no - 1];
-        $tipeKumpul = $tugas['tipe'] ?? 'baru'; // Track apakah ini baru atau revisi
-        
-        setState($chat, [
-            'step'          => 'kumpul_pilih_tipe',
-            'tugas_id'      => (int)$tugas['tugas_id'],
-            'tugas'         => $tugas,
-            'tipe_kumpul'   => $tipeKumpul,
-            'user_cache'    => [
-                'akun_id'      => $user['akun_id'],
-                'nama_lengkap' => $user['nama_lengkap'],
-                'role'         => $user['role'],
-                'nis_nip'      => $user['nis_nip'],
-            ],
-        ]);
+        $tugas      = $daftarTugas[$no - 1];
+        $tipeKumpul = (string) ($tugas['tipe'] ?? 'baru');
+        $sisa       = sisaWaktu((string) $tugas['tenggat']);
+        $tgl        = date('d/m/Y H:i', strtotime((string) $tugas['tenggat']));
 
-        $pesan = "📝 *{$tugas['judul']}*\n\n"
-               . "📚 {$tugas['matpel']} | 🎓 {$tugas['nama_grup']}\n"
-               . "📅 Deadline: " . date('d/m/Y', strtotime($tugas['tenggat'])) . "\n\n";
-        
+        $pesan  = "📝 *{$tugas['judul']}*\n\n"
+                . "📚 {$tugas['matpel']} | 🎓 {$tugas['nama_grup']}\n"
+                . "📅 Deadline: {$tgl}\n"
+                . "⏳ Sisa: {$sisa}\n\n";
+
         if ($tipeKumpul === 'revisi') {
             $pesan .= "⚠️ *INI ADALAH PENGUMPULAN REVISI*\n"
-                   . "Silakan perbaiki jawaban sesuai catatan guru.\n\n";
+                    . "Perbaiki jawaban sesuai catatan guru.\n\n";
         }
-        
+
         $pesan .= "Pilih cara pengumpulan:";
 
-        $keyboard = [
-            ['📄 Teks Jawaban'],
-            ['📎 File/Foto'],
-            ['🔙 Kembali ke Menu'],
-        ];
+        setState($chatId, array_merge($state, [
+            'step'        => 'kumpul_pilih_tipe',
+            'tugas_id'    => (int) $tugas['tugas_id'],
+            'tugas'       => $tugas,
+            'tipe_kumpul' => $tipeKumpul,
+            'user_cache'  => _buildUserCache($user),
+        ]));
 
-        sendMsg($chat, $pesan, $keyboard);
+        sendMsg($chatId, $pesan, [['📄 Teks Jawaban', '📎 File/Foto'], ['🔙 Kembali ke Menu']]);
         return true;
     }
 
-    // ── KUMPULKAN TUGAS - PILIH TIPE JAWABAN ────────────────────────────────
-
+    // ── KUMPULKAN TUGAS: PILIH TIPE JAWABAN ──────────────────────
     if ($step === 'kumpul_pilih_tipe') {
+        if ($text === '🔙 Kembali ke Menu') {
+            return _kembaliMenu($chatId, $user);
+        }
+
         if ($text === '📄 Teks Jawaban') {
-            setState($chat, [
-                'step'          => 'kumpul_input_teks',
-                'tipe_jawaban'  => 'teks',
-                'tugas_id'      => (int)($state['tugas_id'] ?? 0),
-                'tugas'         => $state['tugas'] ?? [],
-                'tipe_kumpul'   => $state['tipe_kumpul'] ?? 'baru',
-                'user_cache'    => [
-                    'akun_id'      => $user['akun_id'],
-                    'nama_lengkap' => $user['nama_lengkap'],
-                    'role'         => $user['role'],
-                    'nis_nip'      => $user['nis_nip'],
-                ],
-            ]);
-            sendMsgRemoveKeyboard($chat, "📝 Silakan masukkan *jawaban tugas* Anda:\n\n(Ketik jawaban Anda di bawah)");
+            setState($chatId, array_merge($state, [
+                'step'       => 'kumpul_input_teks',
+                'user_cache' => _buildUserCache($user),
+            ]));
+            sendMsgRemoveKeyboard($chatId, "📄 Ketikkan *jawaban tugas* Anda di bawah ini:");
             return true;
         }
 
         if ($text === '📎 File/Foto') {
-            setState($chat, [
-                'step'          => 'kumpul_input_file',
-                'tipe_jawaban'  => 'file',
-                'tugas_id'      => (int)($state['tugas_id'] ?? 0),
-                'tugas'         => $state['tugas'] ?? [],
-                'tipe_kumpul'   => $state['tipe_kumpul'] ?? 'baru',
-                'user_cache'    => [
-                    'akun_id'      => $user['akun_id'],
-                    'nama_lengkap' => $user['nama_lengkap'],
-                    'role'         => $user['role'],
-                    'nis_nip'      => $user['nis_nip'],
-                ],
-            ]);
-            sendMsg($chat, "📎 *Silakan kirim file atau foto* jawaban Anda.\n\n✅ Format yang diterima:\n📄 PDF, DOCX, DOC\n📊 XLSX, XLS, CSV\n🖼️ JPG, JPEG, PNG, GIF\n\n💡 Kirim langsung ke chat ini, atau pilih Kembali untuk ke menu utama", [
-                ['🔙 Kembali ke Menu'],
-            ]);
+            setState($chatId, array_merge($state, [
+                'step'       => 'kumpul_input_file',
+                'user_cache' => _buildUserCache($user),
+            ]));
+            sendMsg(
+                $chatId,
+                "📎 Kirim *file atau foto* jawaban Anda.\n\n"
+                . "Format diterima: PDF, DOCX, XLSX, JPG, PNG, GIF\n\n"
+                . "_Kirim langsung ke chat ini._",
+                [['🔙 Kembali ke Menu']]
+            );
             return true;
         }
 
-        if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'      => $user['akun_id'],
-                    'nama_lengkap' => $user['nama_lengkap'],
-                    'role'         => $user['role'],
-                    'nis_nip'      => $user['nis_nip'],
-                ],
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
-            return true;
-        }
-
-        sendMsg($chat, "Pilih tipe pengumpulan yang valid.");
+        sendMsg($chatId, "Pilih tipe pengumpulan yang tersedia.");
         return true;
     }
 
+    // ── KUMPULKAN TUGAS: INPUT TEKS JAWABAN ──────────────────────
     if ($step === 'kumpul_input_teks') {
-        if (strlen($text) < 5) {
-            sendMsg($chat, "❌ Jawaban terlalu pendek. Minimal 5 karakter.");
+        if (mb_strlen($text) < 5) {
+            sendMsg($chatId, "❌ Jawaban terlalu pendek (minimal 5 karakter). Coba lagi:");
             return true;
         }
 
-        $tugas = $state['tugas'] ?? [];
-        setState($chat, [
-            'step'          => 'kumpul_konfirmasi',
-            'tugas_id'      => (int)($state['tugas_id'] ?? 0),
-            'tugas'         => $tugas,
-            'teks_jawaban'  => $text,
-            'link_jawaban'  => '',
-            'tipe_kumpul'   => $state['tipe_kumpul'] ?? 'baru',
-            'user_cache'    => [
-                'akun_id'      => $user['akun_id'],
-                'nama_lengkap' => $user['nama_lengkap'],
-                'role'         => $user['role'],
-                'nis_nip'      => $user['nis_nip'],
-            ],
-        ]);
+        $tugas  = (array) ($state['tugas'] ?? []);
+        $pesan  = formatPreviewPengumpulan($tugas, $text, null);
 
-        $pesan = formatPreviewPengumpulan($tugas, $text, '');
-        sendMsg($chat, $pesan, [['✅ Kirim', '❌ Batal']]);
+        setState($chatId, array_merge($state, [
+            'step'         => 'kumpul_konfirmasi',
+            'teks_jawaban' => $text,
+            'user_cache'   => _buildUserCache($user),
+        ]));
+
+        sendMsg($chatId, $pesan, [['✅ Kirim', '❌ Batal']]);
         return true;
     }
 
+    // ── KUMPULKAN TUGAS: INPUT FILE (tombol teks saja) ───────────
+    // Upload file/foto ditangani di index.php sebelum handler ini.
+    // Di sini hanya menangani kalau user ketik teks saat diminta file.
     if ($step === 'kumpul_input_file') {
         if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'          => 'menu',
-                'user_cache'    => [
-                    'akun_id'      => $user['akun_id'],
-                    'nama_lengkap' => $user['nama_lengkap'],
-                    'role'         => $user['role'],
-                    'nis_nip'      => $user['nis_nip'],
-                ],
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
-            return true;
+            return _kembaliMenu($chatId, $user);
         }
 
-        // Jika ada text selain tombol "Kembali", abaikan (file upload dihandle di index.php)
-        // Return false agar tidak block handler lain
-        return false;
+        // Teks lain diarahkan balik
+        sendMsg(
+            $chatId,
+            "❌ Silakan kirim *file atau foto*, bukan teks.\n\n"
+            . "Atau tekan 🔙 Kembali ke Menu untuk membatalkan.",
+            [['🔙 Kembali ke Menu']]
+        );
+
+        return false; // false agar index.php tidak berhenti di sini
     }
 
+    // ── KUMPULKAN TUGAS: KONFIRMASI FILE ─────────────────────────
     if ($step === 'kumpul_konfirmasi_file') {
         if ($text === '❌ Batal') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'      => $user['akun_id'],
-                    'nama_lengkap' => $user['nama_lengkap'],
-                    'role'         => $user['role'],
-                    'nis_nip'      => $user['nis_nip'],
-                ],
-            ]);
-            sendMsg($chat, "↩️ Pengumpulan dibatalkan.", mainKeyboard($user['role']));
-            return true;
+            return _kembaliMenu($chatId, $user);
         }
 
         if ($text === '✅ Kirim') {
-            // Download file baru dilakukan di sini (saat user konfirmasi),
-            // bukan saat file dikirim — agar konfirmasi muncul instan tanpa timeout.
-            $fileId   = $state['file_id']   ?? null;
-            $fileType = $state['file_type'] ?? 'document';
+            $fileId   = (string) ($state['file_id']   ?? '');
+            $fileType = (string) ($state['file_type'] ?? 'document');
             $filePath = null;
 
-            if ($fileId) {
-                sendMsg($chat, "⏳ Sedang mengunggah file...");
-                $filePath = downloadTelegramFile($fileId, $fileType, (int)$user['akun_id']);
+            if ($fileId !== '') {
+                sendMsg($chatId, "⏳ Mengunggah file, harap tunggu...");
+                $filePath = downloadTelegramFile($fileId, $fileType, $uid);
             }
 
-            if (!$filePath) {
-                sendMsg($chat, "❌ Gagal mengunduh file dari Telegram. Coba kirim ulang.", [['✅ Kirim', '❌ Batal']]);
+            if ($filePath === null) {
+                sendMsg(
+                    $chatId,
+                    "❌ Gagal mengunduh file dari Telegram. Coba kirim ulang.",
+                    [['✅ Kirim', '❌ Batal']]
+                );
                 return true;
             }
 
-            $tipeKumpul = $state['tipe_kumpul'] ?? 'baru';
-            
-            // Pilih function berdasarkan tipe pengumpulan
-            if ($tipeKumpul === 'revisi') {
-                $ok = simpanRevisiTugas(
-                    (int)$user['akun_id'],
-                    (int)($state['tugas_id'] ?? 0),
-                    null,
-                    $filePath
-                );
-            } else {
-                $ok = simpanPengumpulanTugas(
-                    (int)$user['akun_id'],
-                    (int)($state['tugas_id'] ?? 0),
-                    null,
-                    $filePath
-                );
-            }
+            $tipeKumpul = (string) ($state['tipe_kumpul'] ?? 'baru');
+            $tugas      = (array)  ($state['tugas'] ?? []);
 
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'      => $user['akun_id'],
-                    'nama_lengkap' => $user['nama_lengkap'],
-                    'role'         => $user['role'],
-                    'nis_nip'      => $user['nis_nip'],
-                ],
-            ]);
+            $ok = $tipeKumpul === 'revisi'
+                ? simpanRevisiTugas($uid, (int) $state['tugas_id'], null, $filePath)
+                : simpanPengumpulanTugas($uid, (int) $state['tugas_id'], null, $filePath);
+
+            _resetKeMenu($chatId, $user);
+
+            $judulTugas = (string) ($tugas['judul'] ?? '');
+            $namaFile   = (string) ($state['file_nama'] ?? '');
 
             if ($ok) {
-                $tugas = $state['tugas'] ?? [];
-                if ($tipeKumpul === 'revisi') {
-                    $pesan = "✅ *Revisi berhasil dikirim!*\n\n"
-                           . "📝 {$tugas['judul']}\n"
-                           . "📎 File: {$state['file_nama']}\n"
-                           . "⏰ Waktu: " . date('d/m/Y H:i') . "\n\n"
-                           . "Guru akan meninjau revisi Anda.";
-                } else {
-                    $pesan = "✅ *File berhasil dikumpulkan!*\n\n"
-                           . "📝 {$tugas['judul']}\n"
-                           . "📎 File: {$state['file_nama']}\n"
-                           . "⏰ Waktu: " . date('d/m/Y H:i') . "\n\n"
-                           . "File akan diproses oleh guru.";
-                }
-                sendMsg($chat, $pesan, mainKeyboard($user['role']));
+                $pesanOk = $tipeKumpul === 'revisi'
+                    ? "✅ *Revisi berhasil dikirim!*\n\n📝 {$judulTugas}\n📎 {$namaFile}\n\nGuru akan meninjau revisi Anda."
+                    : "✅ *Tugas berhasil dikumpulkan!*\n\n📝 {$judulTugas}\n📎 {$namaFile}\n\n_Guru akan menilai tugas Anda._";
+                sendMsg($chatId, $pesanOk, mainKeyboard($role));
             } else {
-                sendMsg($chat, "❌ Gagal menyimpan pengumpulan. Coba lagi.", mainKeyboard($user['role']));
+                sendMsg($chatId, "❌ Gagal menyimpan pengumpulan. Silakan coba lagi.", mainKeyboard($role));
             }
+
             return true;
         }
 
-        sendMsg($chat, "Pilih: *✅ Kirim* atau *❌ Batal*", [['✅ Kirim', '❌ Batal']]);
+        sendMsg($chatId, "Pilih: *✅ Kirim* atau *❌ Batal*", [['✅ Kirim', '❌ Batal']]);
         return true;
     }
 
+    // ── KUMPULKAN TUGAS: KONFIRMASI TEKS ─────────────────────────
     if ($step === 'kumpul_konfirmasi') {
         if ($text === '❌ Batal') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'        => $user['akun_id'],
-                    'nama_lengkap'   => $user['nama_lengkap'],
-                    'role'           => $user['role'],
-                    'nis_nip'        => $user['nis_nip'],
-                ],
-            ]);
-            sendMsg($chat, "↩️ Pengumpulan dibatalkan.", mainKeyboard($user['role']));
-            return true;
+            return _kembaliMenu($chatId, $user);
         }
 
         if ($text === '✅ Kirim') {
-            $tipeKumpul = $state['tipe_kumpul'] ?? 'baru';
-            
-            // Pilih function berdasarkan tipe pengumpulan
-            if ($tipeKumpul === 'revisi') {
-                $ok = simpanRevisiTugas(
-                    (int)$user['akun_id'],
-                    (int)($state['tugas_id'] ?? 0),
-                    $state['teks_jawaban'] ?? null,
-                    $state['file_path'] ?? null
-                );
-            } else {
-                $ok = simpanPengumpulanTugas(
-                    (int)$user['akun_id'],
-                    (int)($state['tugas_id'] ?? 0),
-                    $state['teks_jawaban'] ?? null,
-                    $state['file_path'] ?? null
-                );
-            }
+            $tipeKumpul = (string) ($state['tipe_kumpul'] ?? 'baru');
+            $tugas      = (array)  ($state['tugas'] ?? []);
 
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => [
-                    'akun_id'        => $user['akun_id'],
-                    'nama_lengkap'   => $user['nama_lengkap'],
-                    'role'           => $user['role'],
-                    'nis_nip'        => $user['nis_nip'],
-                ],
-            ]);
+            $ok = $tipeKumpul === 'revisi'
+                ? simpanRevisiTugas($uid, (int) $state['tugas_id'], $state['teks_jawaban'] ?? null, null)
+                : simpanPengumpulanTugas($uid, (int) $state['tugas_id'], $state['teks_jawaban'] ?? null, null);
+
+            _resetKeMenu($chatId, $user);
+
+            $judulTugas = (string) ($tugas['judul'] ?? '');
 
             if ($ok) {
-                if ($tipeKumpul === 'revisi') {
-                    $pesan = "✅ *Revisi berhasil dikirim!*\n\n"
-                           . "📝 {$state['tugas']['judul']}\n"
-                           . "⏰ Waktu: " . date('d/m/Y H:i') . "\n\n"
-                           . "Guru akan meninjau revisi Anda.";
-                } else {
-                    $pesan = "✅ *Tugas berhasil dikumpulkan!*\n\n"
-                           . "📝 {$state['tugas']['judul']}\n"
-                           . "⏰ Waktu: " . date('d/m/Y H:i') . "\n\n"
-                           . "Guru akan menilai tugas Anda.";
-                }
-                sendMsg($chat, $pesan, mainKeyboard($user['role']));
+                $pesanOk = $tipeKumpul === 'revisi'
+                    ? "✅ *Revisi berhasil dikirim!*\n\n📝 {$judulTugas}\n\nGuru akan meninjau revisi Anda."
+                    : "✅ *Tugas berhasil dikumpulkan!*\n\n📝 {$judulTugas}\n\n_Guru akan menilai tugas Anda._";
+                sendMsg($chatId, $pesanOk, mainKeyboard($role));
             } else {
-                sendMsg($chat, "❌ Gagal menyimpan pengumpulan. Coba lagi.", mainKeyboard($user['role']));
+                sendMsg($chatId, "❌ Gagal menyimpan pengumpulan. Silakan coba lagi.", mainKeyboard($role));
             }
+
             return true;
         }
 
-        sendMsg($chat, "Pilih: *✅ Kirim* atau *❌ Batal*", [['✅ Kirim', '❌ Batal']]);
+        sendMsg($chatId, "Pilih: *✅ Kirim* atau *❌ Batal*", [['✅ Kirim', '❌ Batal']]);
         return true;
     }
 
-    // ── PENGATURAN: PILIH MENU ──────────────────────────────────────────────
-
-    if ($step === 'pengaturan_pilih_menu') {
-        if ($text === '🔑 Ganti Password') {
-            setState($chat, [
-                'step'       => 'pengaturan_ganti_password',
-                'user_cache' => $user,
-            ]);
-            sendMsgRemoveKeyboard($chat, "🔑 *Ganti Password*\n\nMasukkan *password baru*:\n(Minimal 6 karakter)");
-            return true;
-        }
-
-        if ($text === '🕐 Atur Jam Notifikasi') {
-            $jamNow = getJamNotifikasi((int)$user['akun_id']);
-            setState($chat, [
-                'step'       => 'pengaturan_atur_jam',
-                'user_cache' => $user,
-            ]);
-            
-            // Guru hanya bisa setting notifikasi jadwal
-            if ($user['role'] === 'guru') {
-                $pesan = "🕐 *Atur Jam Notifikasi Jadwal*\n\n"
-                       . "Jam notifikasi saat ini:\n"
-                       . "• 📅 Jadwal: *{$jamNow['jam_jadwal']}*\n\n"
-                       . "Masukkan jam baru dalam format:\n`HH:MM`\n\n"
-                       . "Contoh: `07:00`\n"
-                       . "(Notifikasi jadwal mengajar harian)";
-            } else {
-                // Siswa bisa setting jadwal dan tugas
-                $pesan = "🕐 *Atur Jam Notifikasi*\n\n"
-                       . "Jam notifikasi saat ini:\n"
-                       . "• 📅 Jadwal: *{$jamNow['jam_jadwal']}*\n"
-                       . "• 📝 Tugas: *{$jamNow['jam_tugas']}*\n\n"
-                       . "Masukkan dua jam dalam format:\n`HH:MM HH:MM`\n\n"
-                       . "Contoh: `07:00 12:00`\n"
-                       . "(Jadwal, Tugas)";
-            }
-            sendMsgRemoveKeyboard($chat, $pesan);
-            return true;
-        }
-
-        if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => $user,
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
-            return true;
-        }
-
-        sendMsg($chat, "Pilih dari menu di bawah:", settingsKeyboard());
-        return true;
-    }
-
-    // ── PENGATURAN: GANTI PASSWORD ──────────────────────────────────────────
-
-    if ($step === 'pengaturan_ganti_password') {
-        if (strlen($text) < 6) {
-            sendMsg($chat, "❌ Password terlalu pendek. Minimal 6 karakter. Coba lagi:");
-            return true;
-        }
-
-        setState($chat, [
-            'step'           => 'pengaturan_konfirmasi_password',
-            'password_baru'  => $text,
-            'user_cache'     => $user,
-        ]);
-        sendMsg($chat, "Konfirmasi password baru: `{$text}`\n\nAkan disimpan?", [['✅ Ya, Simpan', '❌ Batal']]);
-        return true;
-    }
-
-    if ($step === 'pengaturan_konfirmasi_password') {
-        if ($text === '❌ Batal') {
-            setState($chat, [
-                'step'       => 'pengaturan_pilih_menu',
-                'user_cache' => $user,
-            ]);
-            sendMsg($chat, "↩️ Dibatalkan.", settingsKeyboard());
-            return true;
-        }
-
-        if ($text === '✅ Ya, Simpan') {
-            $ok = updatePassword((int)$user['akun_id'], (string)$state['password_baru']);
-            
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => $user,
-            ]);
-            
-            if ($ok) {
-                sendMsg($chat, "✅ *Password berhasil diubah!*\n\nPassword baru Anda telah disimpan.", mainKeyboard($user['role']));
-            } else {
-                sendMsg($chat, "❌ Gagal mengubah password. Coba lagi.", mainKeyboard($user['role']));
-            }
-            return true;
-        }
-
-        sendMsg($chat, "Pilih: *✅ Ya, Simpan* atau *❌ Batal*", [['✅ Ya, Simpan', '❌ Batal']]);
-        return true;
-    }
-
-    // ── PENGATURAN: ATUR JAM NOTIFIKASI ─────────────────────────────────────
-
-    if ($step === 'pengaturan_atur_jam') {
-        $parts = preg_split('/\s+/', trim($text));
-        
-        // Guru hanya setting 1 jam (jadwal)
-        if ($user['role'] === 'guru') {
-            if (count($parts) !== 1) {
-                sendMsg($chat, "❌ Format salah. Harus 1 jam saja.\n\nContoh: `07:00`");
-                return true;
-            }
-            
-            // Validasi format HH:MM
-            $pattern = '/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/';
-            if (!preg_match($pattern, $parts[0])) {
-                sendMsg($chat, "❌ Format jam tidak valid: `{$parts[0]}`\n\nGunakan format HH:MM (misal: 07:00)");
-                return true;
-            }
-            
-            setState($chat, [
-                'step'           => 'pengaturan_konfirmasi_jam',
-                'jam_jadwal'     => $parts[0],
-                'jam_tugas'      => null, // Guru tidak perlu tugas
-                'user_cache'     => $user,
-            ]);
-            
-            $pesan = "⏰ *Konfirmasi Jam Notifikasi*\n\n"
-                   . "📅 Jadwal: *{$parts[0]}*\n\n"
-                   . "Simpan pengaturan ini?";
-            sendMsg($chat, $pesan, [['✅ Ya, Simpan', '❌ Batal']]);
-            return true;
-        }
-        
-        // Siswa setting 2 jam (jadwal dan tugas)
-        if (count($parts) !== 2) {
-            sendMsg($chat, "❌ Format salah. Harus 2 jam dengan spasi.\n\nContoh: `07:00 12:00`");
-            return true;
-        }
-
-        // Validasi format HH:MM
-        $pattern = '/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/';
-        foreach ($parts as $jam) {
-            if (!preg_match($pattern, $jam)) {
-                sendMsg($chat, "❌ Format jam tidak valid: `{$jam}`\n\nGunakan format HH:MM (misal: 07:00)");
-                return true;
-            }
-        }
-
-        setState($chat, [
-            'step'           => 'pengaturan_konfirmasi_jam',
-            'jam_jadwal'     => $parts[0],
-            'jam_tugas'      => $parts[1],
-            'user_cache'     => $user,
-        ]);
-
-        $pesan = "⏰ *Konfirmasi Jam Notifikasi*\n\n"
-               . "📅 Jadwal: *{$parts[0]}*\n"
-               . "📝 Tugas: *{$parts[1]}*\n\n"
-               . "Simpan pengaturan ini?";
-        sendMsg($chat, $pesan, [['✅ Ya, Simpan', '❌ Batal']]);
-        return true;
-    }
-
-    if ($step === 'pengaturan_konfirmasi_jam') {
-        if ($text === '❌ Batal') {
-            setState($chat, [
-                'step'       => 'pengaturan_pilih_menu',
-                'user_cache' => $user,
-            ]);
-            sendMsg($chat, "↩️ Dibatalkan.", settingsKeyboard());
-            return true;
-        }
-
-        if ($text === '✅ Ya, Simpan') {
-            // Guru hanya setting jadwal
-            if ($user['role'] === 'guru') {
-                $ok = updateJamNotifikasi(
-                    (int)$user['akun_id'],
-                    (string)$state['jam_jadwal'],
-                    '12:00' // Guru tidak perlu tugas, gunakan default
-                );
-                
-                setState($chat, [
-                    'step'       => 'menu',
-                    'user_cache' => $user,
-                ]);
-                
-                if ($ok) {
-                    $pesan = "✅ *Jam Notifikasi Jadwal Berhasil Diubah!*\n\n"
-                           . "📅 Jadwal: {$state['jam_jadwal']}";
-                    sendMsg($chat, $pesan, mainKeyboard($user['role']));
-                } else {
-                    sendMsg($chat, "❌ Gagal mengubah jam notifikasi. Coba lagi.", mainKeyboard($user['role']));
-                }
-            } else {
-                // Siswa setting jadwal dan tugas
-                $ok = updateJamNotifikasi(
-                    (int)$user['akun_id'],
-                    (string)$state['jam_jadwal'],
-                    (string)$state['jam_tugas']
-                );
-                
-                setState($chat, [
-                    'step'       => 'menu',
-                    'user_cache' => $user,
-                ]);
-                
-                if ($ok) {
-                    $pesan = "✅ *Jam Notifikasi Berhasil Diubah!*\n\n"
-                           . "📅 Jadwal: {$state['jam_jadwal']}\n"
-                           . "📝 Tugas: {$state['jam_tugas']}";
-                    sendMsg($chat, $pesan, mainKeyboard($user['role']));
-                } else {
-                    sendMsg($chat, "❌ Gagal mengubah jam notifikasi. Coba lagi.", mainKeyboard($user['role']));
-                }
-            }
-            return true;
-        }
-
-        sendMsg($chat, "Pilih: *✅ Ya, Simpan* atau *❌ Batal*", [['✅ Ya, Simpan', '❌ Batal']]);
-        return true;
-    }
-
-    // ── PENGUMUMAN: PILIH KELAS ────────────────────────────────────────────
-
-    if ($step === 'pengumuman_pilih_kelas') {
-        if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => $user,
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
-            return true;
-        }
-
-        $kelas = sirey_fetch(sirey_query(
-            'SELECT g.grup_id, g.nama_grup
-             FROM grup_rayhanRP g
-             INNER JOIN guru_mengajar_rayhanRP gm ON g.grup_id = gm.grup_id
-             WHERE g.nama_grup = ? AND gm.akun_id = ? LIMIT 1',
-            'si', $text, (int)$user['akun_id']
-        ));
-
-        if (!$kelas) {
-            sendMsg($chat, "❌ Kelas tidak valid.");
-            return true;
-        }
-
-        setState($chat, [
-            'step'       => 'pengumuman_input_judul',
-            'grup_id'    => (int)$kelas['grup_id'],
-            'kelas'      => $kelas['nama_grup'],
-            'user_cache' => $user,
-        ]);
-        sendMsgRemoveKeyboard($chat, "📢 Kelas: *{$kelas['nama_grup']}*\n\nMasukkan *judul pengumuman*:");
-        return true;
-    }
-
-    if ($step === 'pengumuman_input_judul') {
-        if (strlen($text) < 3) {
-            sendMsg($chat, "Judul terlalu pendek. Masukkan judul yang jelas:");
-            return true;
-        }
-
-        setState($chat, [
-            'step'       => 'pengumuman_input_isi',
-            'judul'      => $text,
-            'grup_id'    => (int)($state['grup_id'] ?? 0),
-            'kelas'      => $state['kelas'] ?? '',
-            'user_cache' => $user,
-        ]);
-        sendMsg($chat, "📋 Masukkan *isi pengumuman*:\n\n(Jelaskan dengan detail)");
-        return true;
-    }
-
-    if ($step === 'pengumuman_input_isi') {
-        if (strlen($text) < 5) {
-            sendMsg($chat, "❌ Isi pengumuman terlalu pendek. Minimal 5 karakter.");
-            return true;
-        }
-
-        setState($chat, [
-            'step'       => 'pengumuman_konfirmasi',
-            'judul'      => $state['judul'] ?? '',
-            'isi'        => $text,
-            'grup_id'    => (int)($state['grup_id'] ?? 0),
-            'kelas'      => $state['kelas'] ?? '',
-            'user_cache' => $user,
-        ]);
-
-        $konfirmasi = "✅ *Konfirmasi Pengumuman*\n\n"
-                    . "🎓 Kelas: {$state['kelas']}\n"
-                    . "📢 Judul: {$state['judul']}\n"
-                    . "📋 Isi:\n{$text}\n\n"
-                    . "Kirim pengumuman ini?";
-        sendMsg($chat, $konfirmasi, [['✅ Ya, Kirim', '❌ Batal']]);
-        return true;
-    }
-
-    if ($step === 'pengumuman_konfirmasi') {
-        if ($text === '❌ Batal') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => $user,
-            ]);
-            sendMsg($chat, "↩️ Dibatalkan.", mainKeyboard($user['role']));
-            return true;
-        }
-
-        if ($text === '✅ Ya, Kirim') {
-            $ok = simpanPengumumanGuru([
-                'judul'      => $state['judul'] ?? '',
-                'isi'        => $state['isi'] ?? '',
-                'grup_id'    => (int)($state['grup_id'] ?? 0),
-                'pembuat_id' => (int)$user['akun_id'],
-            ]);
-
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => $user,
-            ]);
-
-            if ($ok) {
-                sendMsg($chat, "✅ *Pengumuman berhasil dikirim!*\n\nSiswa sudah menerima notifikasi pengumuman.", mainKeyboard($user['role']));
-            } else {
-                sendMsg($chat, "❌ Gagal mengirim pengumuman. Coba lagi.", mainKeyboard($user['role']));
-            }
-            return true;
-        }
-
-        sendMsg($chat, "Pilih: *✅ Ya, Kirim* atau *❌ Batal*", [['✅ Ya, Kirim', '❌ Batal']]);
-        return true;
-    }
-
-    // ── ANALISIS TUGAS: PILIH TUGAS ─────────────────────────────────────────
-
+    // ── ANALISIS TUGAS: PILIH NOMOR ──────────────────────────────
     if ($step === 'analisis_tugas_pilih') {
         if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => $user,
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
+            return _kembaliMenu($chatId, $user);
+        }
+
+        $tugasList = (array) ($state['tugas_list'] ?? []);
+        $no        = (int) $text;
+
+        if ($no < 1 || $no > count($tugasList)) {
+            sendMsg($chatId, "❌ Nomor tidak valid. Pilih nomor dari daftar.");
             return true;
         }
 
-        // Cari tugas berdasarkan nomor - gunakan tugasList dari state jika ada, atau fetch baru
-        $tugasList = $state['tugasList'] ?? getTugasAnalisisForGuru((int)$user['akun_id']);
-        $tugasMatch = null;
-        
-        // Parse nomor tugas (text berisi "1", "2", "3", dll)
-        if (is_numeric($text)) {
-            $nomorTugas = (int)$text;
-            $idx = $nomorTugas - 1; // Convert ke 0-based index
-            
-            if (isset($tugasList[$idx])) {
-                $tugasMatch = $tugasList[$idx];
-            }
-        }
+        $tugasPilih = $tugasList[$no - 1];
+        $analisis   = getTugasAnalisisDetail((int) $tugasPilih['tugas_id']);
 
-        if (!$tugasMatch) {
-            sendMsg($chat, "❌ Nomor tugas tidak valid. Pilih nomor dari daftar yang ditampilkan:");
-            return true;
-        }
-
-        // Ambil detail analisis
-        $analisis = getTugasAnalisisDetail((int)$tugasMatch['tugas_id']);
         if (empty($analisis['tugas'])) {
-            sendMsg($chat, "❌ Gagal memuat data tugas.");
+            sendMsg($chatId, "❌ Gagal memuat data tugas.");
             return true;
         }
 
-        $t = $analisis['tugas'];
-        $allCount = count($analisis['all_siswa']);
-        $kumpulCount = count($analisis['sudah_kumpul']);
-        $belumCount = count($analisis['belum_kumpul']);
+        $t            = $analisis['tugas'];
+        $totalSiswa   = count($analisis['all_siswa']);
+        $sudahKumpul  = count($analisis['sudah_kumpul']);
+        $belumKumpul  = count($analisis['belum_kumpul']);
+        $bar          = progressBar($sudahKumpul, $totalSiswa);
 
-        $pesan = "📋 *Analisis Tugas*\n\n";
-        $pesan .= "*{$t['judul']}*\n";
-        $pesan .= "📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n";
-        
-        // Tambahkan wali kelas jika ada
-        if ($t['wali_kelas'] && $t['wali_kelas'] !== '-') {
+        $pesan  = "📋 *Analisis Tugas*\n\n"
+                . "*{$t['judul']}*\n"
+                . "📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n";
+
+        if ($t['wali_kelas'] !== '-') {
             $pesan .= "👨‍💼 Wali: {$t['wali_kelas']}\n";
         }
-        
-        $pesan .= "\n";
-        $pesan .= "📊 *Statistik Pengumpulan:*\n";
-        $pesan .= "   👥 Total siswa: {$allCount}\n";
-        $pesan .= "   ✅ Sudah kumpul: {$kumpulCount}\n";
-        $pesan .= "   ⏳ Belum kumpul: {$belumCount}\n\n";
 
-        // Daftar yang sudah kumpul
+        $pesan .= "\n📊 *Statistik:*\n"
+                . "👥 Total    : {$totalSiswa} siswa\n"
+                . "✅ Kumpul   : {$sudahKumpul} siswa\n"
+                . "⏳ Belum    : {$belumKumpul} siswa\n"
+                . "📈 Progress : {$bar}\n";
+
         if (!empty($analisis['sudah_kumpul'])) {
-            $pesan .= "✅ *Sudah Mengumpulkan:*\n";
+            $pesan .= "\n✅ *Sudah Mengumpulkan:*\n";
             foreach ($analisis['sudah_kumpul'] as $s) {
-                $pesan .= "  • {$s['nama_lengkap']} ({$s['nis_nip']})\n";
+                $pesan .= "• {$s['nama_lengkap']} ({$s['nis_nip']})\n";
             }
-            $pesan .= "\n";
         }
 
-        // Daftar yang belum kumpul
         if (!empty($analisis['belum_kumpul'])) {
-            $pesan .= "⏳ *Belum Mengumpulkan:*\n";
-            foreach ($analisis['belum_kumpul'] as $s) {
-                $pesan .= "  • {$s['nama_lengkap']} ({$s['nis_nip']})\n";
+            $pesan .= "\n⏳ *Belum Mengumpulkan:*\n";
+            // Batasi tampilan agar pesan tidak terlalu panjang
+            $ditampilkan = array_slice($analisis['belum_kumpul'], 0, 15);
+            foreach ($ditampilkan as $s) {
+                $pesan .= "• {$s['nama_lengkap']} ({$s['nis_nip']})\n";
+            }
+            if (count($analisis['belum_kumpul']) > 15) {
+                $sisa = count($analisis['belum_kumpul']) - 15;
+                $pesan .= "...dan {$sisa} siswa lainnya.\n";
             }
         } else {
-            $pesan .= "✅ Semua siswa sudah mengumpulkan!\n";
+            $pesan .= "\n🎉 Semua siswa sudah mengumpulkan!\n";
         }
 
-        setState($chat, [
-            'step'       => 'menu',
-            'user_cache' => $user,
-        ]);
-
-        sendMsg($chat, $pesan, mainKeyboard($user['role']));
+        _resetKeMenu($chatId, $user);
+        sendMsg($chatId, $pesan, mainKeyboard($role));
         return true;
     }
 
-    // ── NILAI TUGAS: PILIH TUGAS ────────────────────────────────────────────
+    // ── NILAI TUGAS: PILIH TUGAS ─────────────────────────────────
     if ($step === 'nilai_pilih_tugas') {
         if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => $user,
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
+            return _kembaliMenu($chatId, $user);
+        }
+
+        $tugasList = (array) ($state['tugas_list'] ?? []);
+        $no        = (int) $text;
+
+        if ($no < 1 || $no > count($tugasList)) {
+            sendMsg($chatId, "❌ Nomor tidak valid. Pilih dari daftar.");
             return true;
         }
 
-        $tugas_list = $state['tugas_list'] ?? [];
-        $pilihan = (int)$text;
-
-        if ($pilihan < 1 || $pilihan > count($tugas_list)) {
-            sendMsg($chat, "❌ Pilihan tidak valid. Masukkan nomor tugas dari daftar.");
-            return true;
-        }
-
-        $tugasSelected = $tugas_list[$pilihan - 1];
-        $pengumpulanList = getPengumpulanTugas((int)$tugasSelected['tugas_id']);
+        $tugasPilih      = $tugasList[$no - 1];
+        $pengumpulanList = getPengumpulanTugas((int) $tugasPilih['tugas_id']);
 
         if (empty($pengumpulanList)) {
-            sendMsg($chat, "❌ Tidak ada pengumpulan untuk tugas ini.");
+            sendMsg($chatId, "❌ Belum ada siswa yang mengumpulkan tugas ini.");
             return true;
         }
 
-        $pesan = "📝 *Daftar Pengumpulan*\n\n";
-        $pesan .= "*{$tugasSelected['judul']}*\n";
-        $pesan .= "💯 Poin Maksimal: {$tugasSelected['poin_maksimal']}\n\n";
-        
+        $pesan  = "📝 *{$tugasPilih['judul']}*\n";
+        $pesan .= "💯 Poin Maksimal: {$tugasPilih['poin_maksimal']}\n\n";
+        $pesan .= "Pilih siswa yang akan dinilai:\n\n";
+
         foreach ($pengumpulanList as $idx => $p) {
-            $no = $idx + 1;
+            $no2       = $idx + 1;
             $statusEmoji = $p['nilai'] !== null ? '✅' : '⏳';
-            $pesan .= "*{$no}.* {$statusEmoji} {$p['nama_lengkap']} ({$p['nis_nip']})\n";
-            if ($p['nilai'] !== null) {
-                $pesan .= "   Nilai: {$p['nilai']} | Catatan: {$p['catatan_guru']}\n";
-            }
-            $pesan .= "\n";
+            $nilaiStr    = $p['nilai'] !== null ? " — Nilai: {$p['nilai']}" : '';
+            $pesan      .= "{$statusEmoji} *{$no2}.* {$p['nama_lengkap']} ({$p['nis_nip']}){$nilaiStr}\n";
         }
 
-        $keyboard = [];
-        foreach ($pengumpulanList as $idx => $p) {
-            $no = $idx + 1;
-            if ($idx % 2 === 0) {
-                $keyboard[] = [(string)$no];
-            } else {
-                $keyboard[count($keyboard) - 1][] = (string)$no;
-            }
-        }
+        $keyboard   = _buildNomorKeyboard(count($pengumpulanList));
         $keyboard[] = ['🔙 Kembali ke Menu'];
 
-        setState($chat, [
-            'step'               => 'nilai_pilih_siswa',
-            'tugas_id'           => (int)$tugasSelected['tugas_id'],
-            'tugas_judul'        => $tugasSelected['judul'],
-            'poin_maksimal'      => (int)$tugasSelected['poin_maksimal'],
-            'pengumpulan_list'   => $pengumpulanList,
-            'user_cache'         => $user,
-        ]);
+        setState($chatId, array_merge($state, [
+            'step'             => 'nilai_pilih_siswa',
+            'tugas_id'         => (int) $tugasPilih['tugas_id'],
+            'tugas_judul'      => $tugasPilih['judul'],
+            'poin_maksimal'    => (int) $tugasPilih['poin_maksimal'],
+            'pengumpulan_list' => $pengumpulanList,
+            'user_cache'       => _buildUserCache($user),
+        ]));
 
-        sendMsg($chat, $pesan, $keyboard);
+        sendMsg($chatId, $pesan, $keyboard);
         return true;
     }
 
-    // ── NILAI TUGAS: PILIH SISWA ────────────────────────────────────────────
+    // ── NILAI TUGAS: PILIH SISWA ─────────────────────────────────
     if ($step === 'nilai_pilih_siswa') {
         if ($text === '🔙 Kembali ke Menu') {
-            // Kembali ke pilih tugas
-            $tugasList = getTugasUntukNilai((int)$user['akun_id']);
-            if (empty($tugasList)) {
-                setState($chat, [
-                    'step'       => 'menu',
-                    'user_cache' => $user,
-                ]);
-                sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
-                return true;
-            }
+            return _kembaliMenu($chatId, $user);
+        }
 
-            $pesan = "⭐ *Nilai Tugas*\n\nPilih tugas untuk menilai pengumpulan:\n\n";
-            foreach ($tugasList as $idx => $t) {
-                $no = $idx + 1;
-                $belumDinilai = (int)$t['jml_pengumpulan'] - (int)$t['jml_sudah_dinilai'];
-                $emoji = $belumDinilai > 0 ? '🔴' : '✅';
-                $pesan .= "{$emoji} *{$no}.* {$t['judul']}\n   📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n   📊 {$t['jml_sudah_dinilai']}/{$t['jml_pengumpulan']} dinilai\n\n";
-            }
+        $pengumpulanList = (array) ($state['pengumpulan_list'] ?? []);
+        $no              = (int) $text;
 
-            $keyboard = [];
-            foreach ($tugasList as $idx => $p) {
-                $no = $idx + 1;
-                if ($idx % 2 === 0) {
-                    $keyboard[] = [(string)$no];
-                } else {
-                    $keyboard[count($keyboard) - 1][] = (string)$no;
-                }
-            }
-            $keyboard[] = ['🔙 Kembali ke Menu'];
-
-            setState($chat, [
-                'step'       => 'nilai_pilih_tugas',
-                'tugas_list' => $tugasList,
-                'user_cache' => $user,
-            ]);
-
-            sendMsg($chat, $pesan, $keyboard);
+        if ($no < 1 || $no > count($pengumpulanList)) {
+            sendMsg($chatId, "❌ Nomor tidak valid. Pilih dari daftar.");
             return true;
         }
 
-        $pengumpulanList = $state['pengumpulan_list'] ?? [];
-        $pilihan = (int)$text;
-
-        if ($pilihan < 1 || $pilihan > count($pengumpulanList)) {
-            sendMsg($chat, "❌ Pilihan tidak valid. Masukkan nomor siswa dari daftar.");
-            return true;
-        }
-
-        $pengumpulanSelected = $pengumpulanList[$pilihan - 1];
-        $detail = getPengumpulanDetail((int)$pengumpulanSelected['pengumpulan_id']);
+        $pengumpulan = $pengumpulanList[$no - 1];
+        $detail      = getPengumpulanDetail((int) $pengumpulan['pengumpulan_id']);
 
         if (!$detail) {
-            sendMsg($chat, "❌ Gagal memuat data pengumpulan.");
+            sendMsg($chatId, "❌ Gagal memuat data pengumpulan.");
             return true;
         }
 
-        $pesan = formatPreviewPengumpulanGuru($detail);
+        $pesan = formatFormNilai($detail);
 
-        setState($chat, [
-            'step'                  => 'nilai_lihat_jawaban',
-            'pengumpulan_id'        => (int)$detail['pengumpulan_id'],
-            'pengumpulan_detail'    => $detail,
-            'user_cache'            => $user,
-        ]);
-
-        $keyboard = [['✏️ Nilai'], ['🔙 Kembali ke Menu']];
-        sendMsg($chat, $pesan, $keyboard);
-        return true;
-    }
-
-    // ── NILAI TUGAS: LIHAT JAWABAN & INPUT NILAI ────────────────────────────
-    if ($step === 'nilai_lihat_jawaban') {
-        if ($text === '🔙 Kembali ke Menu') {
-            // Kembali ke daftar siswa
-            $pengumpulanList = $state['pengumpulan_list'] ?? [];
-            $pesan = "📝 *Daftar Pengumpulan*\n\n";
-            $pesan .= "*{$state['tugas_judul']}*\n";
-            $pesan .= "💯 Poin Maksimal: {$state['poin_maksimal']}\n\n";
-            
-            foreach ($pengumpulanList as $idx => $p) {
-                $no = $idx + 1;
-                $statusEmoji = $p['nilai'] !== null ? '✅' : '⏳';
-                $pesan .= "*{$no}.* {$statusEmoji} {$p['nama_lengkap']} ({$p['nis_nip']})\n";
-                if ($p['nilai'] !== null) {
-                    $pesan .= "   Nilai: {$p['nilai']} | Catatan: {$p['catatan_guru']}\n";
-                }
-                $pesan .= "\n";
-            }
-
-            $keyboard = [];
-            foreach ($pengumpulanList as $idx => $p) {
-                $no = $idx + 1;
-                if ($idx % 2 === 0) {
-                    $keyboard[] = [(string)$no];
-                } else {
-                    $keyboard[count($keyboard) - 1][] = (string)$no;
-                }
-            }
-            $keyboard[] = ['🔙 Kembali ke Menu'];
-
-            setState($chat, [
-                'step'             => 'nilai_pilih_siswa',
-                'tugas_id'         => $state['tugas_id'],
-                'tugas_judul'      => $state['tugas_judul'],
-                'poin_maksimal'    => $state['poin_maksimal'],
-                'pengumpulan_list' => $pengumpulanList,
-                'user_cache'       => $user,
-            ]);
-
-            sendMsg($chat, $pesan, $keyboard);
-            return true;
-        }
-
-        if ($text === '✏️ Nilai') {
-            $detail = $state['pengumpulan_detail'] ?? [];
-            $pesan = formatFormNilai($detail);
-
-            setState($chat, [
-                'step'               => 'nilai_input_nilai',
-                'pengumpulan_id'     => $state['pengumpulan_id'],
-                'pengumpulan_detail' => $detail,
-                'user_cache'         => $user,
-            ]);
-
-            sendMsg($chat, $pesan);
-            return true;
-        }
-
-        sendMsg($chat, "Gunakan tombol di bawah untuk melanjutkan.");
-        return true;
-    }
-
-    // ── NILAI TUGAS: INPUT NILAI ────────────────────────────────────────────
-    if ($step === 'nilai_input_nilai') {
-        // Validasi input nilai (numeric)
-        $nilai = (float)str_replace(',', '.', $text);
-        $poinMax = (float)($state['pengumpulan_detail']['poin_maksimal'] ?? 100);
-
-        if (!is_numeric($text) || $nilai < 0 || $nilai > $poinMax) {
-            $pesan = "❌ Nilai tidak valid!\n\n";
-            $pesan .= "Masukkan nilai antara *0* dan *{$poinMax}*\n";
-            $pesan .= "(Contoh: 85 atau 90.5)";
-            sendMsg($chat, $pesan);
-            return true;
-        }
-
-        setState($chat, [
-            'step'               => 'nilai_input_catatan',
-            'pengumpulan_id'     => $state['pengumpulan_id'],
-            'pengumpulan_detail' => $state['pengumpulan_detail'],
-            'nilai_input'        => $nilai,
-            'user_cache'         => $user,
-        ]);
-
-        $pesan = "✏️ *Input Catatan (Opsional)*\n\n";
-        $pesan .= "Nilai: *{$nilai}*\n\n";
-        $pesan .= "Ketik catatan untuk siswa (atau tekan ✓ untuk lanjut tanpa catatan):";
-
-        $keyboard = [['✓ Lanjut Tanpa Catatan']];
-        sendMsg($chat, $pesan, $keyboard);
-        return true;
-    }
-
-    // ── NILAI TUGAS: INPUT CATATAN ──────────────────────────────────────────
-    if ($step === 'nilai_input_catatan') {
-        $catatan = '';
-
-        if ($text === '✓ Lanjut Tanpa Catatan') {
-            $catatan = '';
-        } else if (!empty($text)) {
-            $catatan = $text;
-        }
-
-        $detail = $state['pengumpulan_detail'] ?? [];
-        $nilaiInput = $state['nilai_input'] ?? 0;
-        $pesan = formatKonfirmasiNilai($detail, $nilaiInput, $catatan ?: null);
-
-        setState($chat, [
-            'step'               => 'nilai_konfirmasi',
-            'pengumpulan_id'     => $state['pengumpulan_id'],
+        setState($chatId, array_merge($state, [
+            'step'               => 'nilai_input_nilai',
+            'pengumpulan_id'     => (int) $detail['pengumpulan_id'],
             'pengumpulan_detail' => $detail,
-            'nilai_input'        => $nilaiInput,
-            'catatan_input'      => $catatan,
-            'user_cache'         => $user,
-        ]);
+            'user_cache'         => _buildUserCache($user),
+        ]));
 
-        $keyboard = [['✅ Simpan'], ['✏️ Edit'], ['❌ Batalkan']];
-        sendMsg($chat, $pesan, $keyboard);
+        sendMsg($chatId, $pesan, [['🔙 Kembali ke Menu']]);
         return true;
     }
 
-    // ── NILAI TUGAS: KONFIRMASI & SIMPAN ────────────────────────────────────
-    if ($step === 'nilai_konfirmasi') {
-        if ($text === '❌ Batalkan') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => $user,
-            ]);
-            sendMsg($chat, "❌ Penilaian dibatalkan. Kembali ke menu.", mainKeyboard($user['role']));
+    // ── NILAI TUGAS: INPUT NILAI ─────────────────────────────────
+    if ($step === 'nilai_input_nilai') {
+        if ($text === '🔙 Kembali ke Menu') {
+            return _kembaliMenu($chatId, $user);
+        }
+
+        $detail  = (array) ($state['pengumpulan_detail'] ?? []);
+        $poinMax = (float) ($detail['poin_maksimal'] ?? 100);
+
+        if (!is_numeric($text)) {
+            sendMsg($chatId, "❌ Masukkan angka yang valid. Contoh: `85` atau `90.5`");
             return true;
         }
 
-        if ($text === '✏️ Edit') {
-            $detail = $state['pengumpulan_detail'] ?? [];
-            $pesan = formatFormNilai($detail);
+        $nilai = (float) str_replace(',', '.', $text);
 
-            setState($chat, [
-                'step'               => 'nilai_input_nilai',
-                'pengumpulan_id'     => $state['pengumpulan_id'],
-                'pengumpulan_detail' => $detail,
-                'user_cache'         => $user,
-            ]);
+        if ($nilai < 0 || $nilai > $poinMax) {
+            sendMsg($chatId, "❌ Nilai harus antara *0* dan *{$poinMax}*. Coba lagi:");
+            return true;
+        }
 
-            sendMsg($chat, $pesan);
+        setState($chatId, array_merge($state, [
+            'step'        => 'nilai_input_catatan',
+            'nilai_input' => $nilai,
+            'user_cache'  => _buildUserCache($user),
+        ]));
+
+        sendMsg(
+            $chatId,
+            "💯 Nilai: *{$nilai}/{$poinMax}*\n\n"
+            . "Ketik *catatan* untuk siswa, atau tekan tombol untuk lanjut tanpa catatan:",
+            [['✓ Tanpa Catatan'], ['🔙 Kembali ke Menu']]
+        );
+
+        return true;
+    }
+
+    // ── NILAI TUGAS: INPUT CATATAN ───────────────────────────────
+    if ($step === 'nilai_input_catatan') {
+        if ($text === '🔙 Kembali ke Menu') {
+            return _kembaliMenu($chatId, $user);
+        }
+
+        $catatan = ($text === '✓ Tanpa Catatan') ? null : $text;
+        $detail  = (array)  ($state['pengumpulan_detail'] ?? []);
+        $nilai   = (float)  ($state['nilai_input'] ?? 0);
+
+        $pesan = formatKonfirmasiNilai($detail, $nilai, $catatan);
+
+        setState($chatId, array_merge($state, [
+            'step'         => 'nilai_konfirmasi',
+            'catatan_input' => $catatan,
+            'user_cache'   => _buildUserCache($user),
+        ]));
+
+        sendMsg($chatId, $pesan, [['✅ Simpan', '✏️ Ubah Nilai', '❌ Batal']]);
+        return true;
+    }
+
+    // ── NILAI TUGAS: KONFIRMASI & SIMPAN ─────────────────────────
+    if ($step === 'nilai_konfirmasi') {
+        if ($text === '❌ Batal') {
+            return _kembaliMenu($chatId, $user);
+        }
+
+        if ($text === '✏️ Ubah Nilai') {
+            // Kembali ke input nilai
+            $detail = (array) ($state['pengumpulan_detail'] ?? []);
+            setState($chatId, array_merge($state, [
+                'step'       => 'nilai_input_nilai',
+                'user_cache' => _buildUserCache($user),
+            ]));
+            sendMsg($chatId, formatFormNilai($detail), [['🔙 Kembali ke Menu']]);
             return true;
         }
 
         if ($text === '✅ Simpan') {
             $hasil = savePenilaian(
-                (int)$state['pengumpulan_id'],
-                (int)$user['akun_id'],
-                (float)$state['nilai_input'],
-                $state['catatan_input'] ?: null,
+                (int)    $state['pengumpulan_id'],
+                $uid,
+                (float)  $state['nilai_input'],
+                $state['catatan_input'] ?? null,
                 'lulus'
             );
 
+            $detail = (array) ($state['pengumpulan_detail'] ?? []);
+
             if ($hasil['success']) {
-                $detail = $state['pengumpulan_detail'] ?? [];
-                $pesan = "✅ *Penilaian Berhasil Disimpan*\n\n";
-                $pesan .= "👤 Siswa: {$detail['nama_lengkap']}\n";
-                $pesan .= "📝 Tugas: {$detail['judul']}\n";
-                $pesan .= "💯 Nilai: {$state['nilai_input']}/{$detail['poin_maksimal']}\n";
-                
-                if ($state['catatan_input']) {
-                    $pesan .= "📋 Catatan: {$state['catatan_input']}\n";
+                // Tawarkan untuk menilai siswa berikutnya
+                $pengumpulanList = (array) ($state['pengumpulan_list'] ?? []);
+                $belumDinilai    = array_values(array_filter(
+                    $pengumpulanList,
+                    fn($p) => $p['pengumpulan_id'] !== $state['pengumpulan_id']
+                        && $p['nilai'] === null
+                ));
+
+                _resetKeMenu($chatId, $user);
+
+                $pesanOk = "✅ *Penilaian Berhasil Disimpan!*\n\n"
+                         . "👤 {$detail['nama_lengkap']}\n"
+                         . "📝 {$detail['judul']}\n"
+                         . formatNilaiBintang((float) $state['nilai_input'], (int) $detail['poin_maksimal']);
+
+                if (!empty($state['catatan_input'])) {
+                    $pesanOk .= "\n💬 _{$state['catatan_input']}_";
                 }
 
-                $pesan .= "\n🎯 Apa selanjutnya?";
+                if (!empty($belumDinilai)) {
+                    $pesanOk .= "\n\n📌 Masih ada " . count($belumDinilai) . " siswa yang belum dinilai.";
+                }
 
-                $keyboard = [
-                    ['⭐ Nilai Tugas Lain'],
-                    ['🔙 Kembali ke Menu'],
-                ];
-
-                setState($chat, [
-                    'step'       => 'nilai_selesai',
-                    'user_cache' => $user,
-                ]);
-
-                sendMsg($chat, $pesan, $keyboard);
+                sendMsg($chatId, $pesanOk, mainKeyboard($role));
             } else {
-                sendMsg($chat, "❌ Gagal menyimpan penilaian: " . $hasil['message']);
+                _resetKeMenu($chatId, $user);
+                sendMsg($chatId, "❌ Gagal menyimpan: {$hasil['message']}", mainKeyboard($role));
             }
 
             return true;
         }
 
-        sendMsg($chat, "Gunakan tombol untuk melanjutkan.");
+        sendMsg($chatId, "Gunakan tombol untuk melanjutkan.", [['✅ Simpan', '✏️ Ubah Nilai', '❌ Batal']]);
         return true;
     }
 
-    // ── NILAI TUGAS: SELESAI ────────────────────────────────────────────────
-    if ($step === 'nilai_selesai') {
-        if ($text === '⭐ Nilai Tugas Lain') {
-            $tugasList = getTugasUntukNilai((int)$user['akun_id']);
-            
-            if (empty($tugasList)) {
-                sendMsg($chat, "❌ Tidak ada tugas yang perlu dinilai.", mainKeyboard($user['role']));
-                setState($chat, [
-                    'step'       => 'menu',
-                    'user_cache' => $user,
-                ]);
+    // ── PENGUMUMAN: PILIH KELAS (guru) ───────────────────────────
+    if ($step === 'pengumuman_pilih_kelas') {
+        if ($text === '🔙 Kembali ke Menu') {
+            return _kembaliMenu($chatId, $user);
+        }
+
+        $kelas = sirey_fetch(sirey_query(
+            'SELECT g.grup_id, g.nama_grup
+             FROM grup_rayhanrp g
+             INNER JOIN guru_mengajar_rayhanrp gm ON g.grup_id = gm.grup_id
+             WHERE g.nama_grup = ? AND gm.akun_id = ? AND gm.aktif = 1 LIMIT 1',
+            'si',
+            $text,
+            $uid
+        ));
+
+        if (!$kelas) {
+            sendMsg($chatId, "❌ Kelas tidak valid. Pilih dari tombol yang tersedia.");
+            return true;
+        }
+
+        setState($chatId, array_merge($state, [
+            'step'       => 'pengumuman_input_judul',
+            'grup_id'    => (int) $kelas['grup_id'],
+            'kelas'      => $kelas['nama_grup'],
+            'user_cache' => _buildUserCache($user),
+        ]));
+
+        sendMsgRemoveKeyboard(
+            $chatId,
+            "📢 Kelas: *{$kelas['nama_grup']}*\n\nMasukkan *judul pengumuman*:"
+        );
+
+        return true;
+    }
+
+    // ── PENGUMUMAN: INPUT JUDUL ──────────────────────────────────
+    if ($step === 'pengumuman_input_judul') {
+        if (mb_strlen($text) < 3) {
+            sendMsg($chatId, "❌ Judul terlalu pendek. Coba lagi:");
+            return true;
+        }
+
+        setState($chatId, array_merge($state, [
+            'step'       => 'pengumuman_input_isi',
+            'judul'      => $text,
+            'user_cache' => _buildUserCache($user),
+        ]));
+
+        sendMsg($chatId, "Masukkan *isi pengumuman*:");
+        return true;
+    }
+
+    // ── PENGUMUMAN: INPUT ISI ────────────────────────────────────
+    if ($step === 'pengumuman_input_isi') {
+        if (mb_strlen($text) < 5) {
+            sendMsg($chatId, "❌ Isi pengumuman terlalu pendek (minimal 5 karakter). Coba lagi:");
+            return true;
+        }
+
+        $preview = "✅ *Konfirmasi Pengumuman*\n\n"
+                 . "🎓 Kelas  : {$state['kelas']}\n"
+                 . "📢 Judul  : {$state['judul']}\n\n"
+                 . "📋 *Isi:*\n{$text}\n\n"
+                 . "Kirim pengumuman ini?";
+
+        setState($chatId, array_merge($state, [
+            'step'       => 'pengumuman_konfirmasi',
+            'isi'        => $text,
+            'user_cache' => _buildUserCache($user),
+        ]));
+
+        sendMsg($chatId, $preview, [['✅ Ya, Kirim', '❌ Batal']]);
+        return true;
+    }
+
+    // ── PENGUMUMAN: KONFIRMASI ───────────────────────────────────
+    if ($step === 'pengumuman_konfirmasi') {
+        if ($text === '❌ Batal') {
+            return _kembaliMenu($chatId, $user);
+        }
+
+        if ($text === '✅ Ya, Kirim') {
+            $ok = simpanPengumumanGuru([
+                'judul'      => (string) $state['judul'],
+                'isi'        => (string) $state['isi'],
+                'grup_id'    => (int)    $state['grup_id'],
+                'pembuat_id' => $uid,
+            ]);
+
+            _resetKeMenu($chatId, $user);
+
+            if ($ok) {
+                sendMsg(
+                    $chatId,
+                    "✅ *Pengumuman berhasil dikirim!*\n\nSiswa di kelas *{$state['kelas']}* sudah menerima notifikasi. 📬",
+                    mainKeyboard($role)
+                );
+            } else {
+                sendMsg($chatId, "❌ Gagal mengirim pengumuman. Silakan coba lagi.", mainKeyboard($role));
+            }
+
+            return true;
+        }
+
+        sendMsg($chatId, "Pilih: *✅ Ya, Kirim* atau *❌ Batal*", [['✅ Ya, Kirim', '❌ Batal']]);
+        return true;
+    }
+
+    // ── PENGATURAN: PILIH MENU ───────────────────────────────────
+    if ($step === 'pengaturan_pilih_menu') {
+        if ($text === '🔙 Kembali ke Menu') {
+            return _kembaliMenu($chatId, $user);
+        }
+
+        if ($text === '🔑 Ganti Password') {
+            setState($chatId, array_merge($state, [
+                'step'       => 'pengaturan_ganti_password',
+                'user_cache' => _buildUserCache($user),
+            ]));
+            sendMsgRemoveKeyboard(
+                $chatId,
+                "🔑 *Ganti Password*\n\nMasukkan *password baru* (minimal 6 karakter):"
+            );
+            return true;
+        }
+
+        if ($text === '🕐 Atur Jam Notifikasi') {
+            $jamNow = getJamNotifikasi($uid);
+
+            $instruksi = $role === 'guru'
+                ? "Masukkan jam notifikasi jadwal:\nFormat: `HH:MM`\nContoh: `07:00`"
+                : "Masukkan dua jam dipisah spasi:\nFormat: `HH:MM HH:MM`\nUrutan: _(Jadwal) (Tugas)_\nContoh: `07:00 12:00`";
+
+            setState($chatId, array_merge($state, [
+                'step'       => 'pengaturan_atur_jam',
+                'user_cache' => _buildUserCache($user),
+            ]));
+
+            sendMsgRemoveKeyboard(
+                $chatId,
+                "🕐 *Atur Jam Notifikasi*\n\n"
+                . "Saat ini:\n"
+                . ($role === 'guru' ? "📅 Jadwal : *{$jamNow['jam_jadwal']}*\n\n" : (
+                    "📅 Jadwal : *{$jamNow['jam_jadwal']}*\n"
+                    . "📝 Tugas  : *{$jamNow['jam_tugas']}*\n\n"
+                ))
+                . $instruksi
+            );
+
+            return true;
+        }
+
+        sendMsg($chatId, "Pilih menu dari tombol di bawah:", settingsKeyboard());
+        return true;
+    }
+
+    // ── PENGATURAN: GANTI PASSWORD ───────────────────────────────
+    if ($step === 'pengaturan_ganti_password') {
+        if (mb_strlen($text) < 6) {
+            sendMsg($chatId, "❌ Password minimal 6 karakter. Coba lagi:");
+            return true;
+        }
+
+        setState($chatId, array_merge($state, [
+            'step'          => 'pengaturan_konfirmasi_password',
+            'password_baru' => $text,
+            'user_cache'    => _buildUserCache($user),
+        ]));
+
+        sendMsg(
+            $chatId,
+            "Password baru: `{$text}`\n\nYakin ingin menyimpan password ini?",
+            [['✅ Ya, Simpan', '❌ Batal']]
+        );
+
+        return true;
+    }
+
+    // ── PENGATURAN: KONFIRMASI PASSWORD ──────────────────────────
+    if ($step === 'pengaturan_konfirmasi_password') {
+        if ($text === '❌ Batal') {
+            setState($chatId, array_merge($state, [
+                'step'       => 'pengaturan_pilih_menu',
+                'user_cache' => _buildUserCache($user),
+            ]));
+            sendMsg($chatId, "↩️ Dibatalkan.", settingsKeyboard());
+            return true;
+        }
+
+        if ($text === '✅ Ya, Simpan') {
+            $ok = updatePassword($uid, (string) $state['password_baru']);
+            _resetKeMenu($chatId, $user);
+
+            if ($ok) {
+                sendMsg(
+                    $chatId,
+                    "✅ *Password berhasil diubah!*\n\nGunakan password baru Anda saat login berikutnya.",
+                    mainKeyboard($role)
+                );
+            } else {
+                sendMsg($chatId, "❌ Gagal mengubah password. Silakan coba lagi.", mainKeyboard($role));
+            }
+
+            return true;
+        }
+
+        sendMsg($chatId, "Pilih: *✅ Ya, Simpan* atau *❌ Batal*", [['✅ Ya, Simpan', '❌ Batal']]);
+        return true;
+    }
+
+    // ── PENGATURAN: ATUR JAM NOTIFIKASI ──────────────────────────
+    if ($step === 'pengaturan_atur_jam') {
+        $parts = preg_split('/\s+/', trim($text));
+        $pola  = '/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/';
+
+        if ($role === 'guru') {
+            // Guru hanya input 1 jam (jadwal)
+            if (count($parts) !== 1 || !preg_match($pola, $parts[0])) {
+                sendMsg($chatId, "❌ Format salah. Masukkan satu jam: contoh `07:00`");
                 return true;
             }
 
-            $pesan = "⭐ *Nilai Tugas*\n\nPilih tugas untuk menilai pengumpulan:\n\n";
-            foreach ($tugasList as $idx => $t) {
-                $no = $idx + 1;
-                $belumDinilai = (int)$t['jml_pengumpulan'] - (int)$t['jml_sudah_dinilai'];
-                $emoji = $belumDinilai > 0 ? '🔴' : '✅';
-                $pesan .= "{$emoji} *{$no}.* {$t['judul']}\n   📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n   📊 {$t['jml_sudah_dinilai']}/{$t['jml_pengumpulan']} dinilai\n\n";
+            $jamJadwal = $parts[0];
+            $jamTugas  = '12:00'; // default untuk guru
+
+        } else {
+            // Siswa input 2 jam
+            if (count($parts) !== 2 || !preg_match($pola, $parts[0]) || !preg_match($pola, $parts[1])) {
+                sendMsg($chatId, "❌ Format salah. Masukkan dua jam: contoh `07:00 12:00`");
+                return true;
             }
 
-            $keyboard = [];
-            foreach ($tugasList as $idx => $p) {
-                $no = $idx + 1;
-                if ($idx % 2 === 0) {
-                    $keyboard[] = [(string)$no];
-                } else {
-                    $keyboard[count($keyboard) - 1][] = (string)$no;
-                }
-            }
-            $keyboard[] = ['🔙 Kembali ke Menu'];
-
-            setState($chat, [
-                'step'       => 'nilai_pilih_tugas',
-                'tugas_list' => $tugasList,
-                'user_cache' => $user,
-            ]);
-
-            sendMsg($chat, $pesan, $keyboard);
-            return true;
+            $jamJadwal = $parts[0];
+            $jamTugas  = $parts[1];
         }
 
-        if ($text === '🔙 Kembali ke Menu') {
-            setState($chat, [
-                'step'       => 'menu',
-                'user_cache' => $user,
-            ]);
-            sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
-            return true;
-        }
+        $pesan = "⏰ *Konfirmasi Jam Notifikasi*\n\n"
+               . "📅 Jadwal : *{$jamJadwal}*\n"
+               . ($role !== 'guru' ? "📝 Tugas  : *{$jamTugas}*\n" : '')
+               . "\nSimpan pengaturan ini?";
 
-        setState($chat, [
-            'step'       => 'menu',
-            'user_cache' => $user,
-        ]);
-        sendMsg($chat, "↩️ Kembali ke menu utama", mainKeyboard($user['role']));
+        setState($chatId, array_merge($state, [
+            'step'        => 'pengaturan_konfirmasi_jam',
+            'jam_jadwal'  => $jamJadwal,
+            'jam_tugas'   => $jamTugas,
+            'user_cache'  => _buildUserCache($user),
+        ]));
+
+        sendMsg($chatId, $pesan, [['✅ Ya, Simpan', '❌ Batal']]);
         return true;
     }
 
-    // ── MENU (step = 'menu') ────────────────────────────────────────────────
+    // ── PENGATURAN: KONFIRMASI JAM ───────────────────────────────
+    if ($step === 'pengaturan_konfirmasi_jam') {
+        if ($text === '❌ Batal') {
+            setState($chatId, array_merge($state, [
+                'step'       => 'pengaturan_pilih_menu',
+                'user_cache' => _buildUserCache($user),
+            ]));
+            sendMsg($chatId, "↩️ Dibatalkan.", settingsKeyboard());
+            return true;
+        }
+
+        if ($text === '✅ Ya, Simpan') {
+            $ok = updateJamNotifikasi($uid, (string) $state['jam_jadwal'], (string) $state['jam_tugas']);
+            _resetKeMenu($chatId, $user);
+
+            if ($ok) {
+                $pesanOk = "✅ *Jam Notifikasi Diperbarui!*\n\n"
+                         . "📅 Jadwal : {$state['jam_jadwal']}\n"
+                         . ($role !== 'guru' ? "📝 Tugas  : {$state['jam_tugas']}\n" : '');
+                sendMsg($chatId, $pesanOk, mainKeyboard($role));
+            } else {
+                sendMsg($chatId, "❌ Gagal menyimpan. Silakan coba lagi.", mainKeyboard($role));
+            }
+
+            return true;
+        }
+
+        sendMsg($chatId, "Pilih: *✅ Ya, Simpan* atau *❌ Batal*", [['✅ Ya, Simpan', '❌ Batal']]);
+        return true;
+    }
+
+    // ── STEP MENU: lanjutkan ke handleMenu ───────────────────────
     if ($step === 'menu') {
-        return false; // Biar handleMenu yang handle
+        return false;
     }
 
     return false;
 }
 
 
-// ============================================================
-// HELPERS INTERNAL
-// ============================================================
+// ================================================================
+// Helper privat
+// ================================================================
 
-function verifyPassword(array $akun, string $input): bool {
-    $stored = (string)$akun['password'];
-    if (str_starts_with($stored, '$2')) {
-        return password_verify($input, $stored);
-    }
-    return hash_equals($stored, $input);
+/**
+ * Reset state ke menu utama dan tampilkan keyboard menu.
+ * Mengembalikan true agar bisa langsung dipakai sebagai return.
+ */
+function _kembaliMenu(int $chatId, array $user): bool
+{
+    _resetKeMenu($chatId, $user);
+    sendMsg($chatId, "↩️ Menu utama:", mainKeyboard((string) $user['role']));
+    return true;
 }
 
-function handleBuatTugas(int $chat, int $guruId): bool {
-    $mapelList = getMatpelGuru($guruId);
-    if (empty($mapelList)) {
-        sendMsg($chat, "❌ Anda belum memiliki assignment mapel. Hubungi admin.");
-        return true;
+/**
+ * Reset state ke step 'menu' tanpa kirim pesan.
+ */
+function _resetKeMenu(int $chatId, array $user): void
+{
+    $stateSekarang = getState($chatId) ?? [];
+
+    setState($chatId, [
+        'step'          => 'menu',
+        'session_token' => $stateSekarang['session_token'] ?? '',
+        'user_cache'    => _buildUserCache($user),
+    ]);
+}
+
+/**
+ * Buat array user_cache dari data user.
+ * Didefinisikan di sini juga agar state.php bisa berdiri sendiri.
+ * (Fungsi sama di menu.php, tapi PHP tidak masalah karena keduanya di-include index.php)
+ */
+if (!function_exists('_buildUserCache')) {
+    function _buildUserCache(array $user): array
+    {
+        return [
+            'akun_id'      => $user['akun_id'],
+            'nama_lengkap' => $user['nama_lengkap'],
+            'role'         => $user['role'],
+            'nis_nip'      => $user['nis_nip'],
+        ];
     }
-    $keyboard = array_chunk(array_map(fn($m) => $m['nama'], $mapelList), 2);
-    $keyboard[] = ['🔙 Kembali ke Menu'];
-
-    setState(
-        // chat_id diteruskan melalui closure tidak bisa, jadi simpan via parameter global
-        // kita pakai trick: state di-set sebelum return
-        0, [] // placeholder — akan di-override di bawah
-    );
-
-    // Override state dengan benar
-    $GLOBALS['_chat_buat_tugas'] = $chat;
-    setState($chat, ['step' => 'tugas_pilih_mapel']);
-    sendMsg($chat, "✏️ *Buat Tugas Baru*\n\nPilih *mata pelajaran*:", $keyboard);
-    return true;
 }

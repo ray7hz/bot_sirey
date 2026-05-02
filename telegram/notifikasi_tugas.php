@@ -24,9 +24,9 @@ error_log("[notif_tugas] ▶ Dijalankan jam={$jam} cek_deadline={$besok}");
 $users = sirey_fetchAll(sirey_query(
     'SELECT a.akun_id, a.nama_lengkap, at.telegram_chat_id,
             TIME_FORMAT(COALESCE(ns.jam_notif_tugas, "12:00:00"), "%H:%i") AS jam_notif
-     FROM akun_telegram_rayhanRP at
-     JOIN akun_rayhanRP a ON at.akun_id = a.akun_id
-     LEFT JOIN notif_settings_rayhanRP ns ON ns.akun_id = a.akun_id
+     FROM akun_telegram_rayhanrp at
+     JOIN akun_rayhanrp a ON at.akun_id = a.akun_id
+     LEFT JOIN notif_settings_rayhanrp ns ON ns.akun_id = a.akun_id
      WHERE a.role = "siswa"
        AND a.aktif = 1
        AND at.telegram_chat_id > 0
@@ -54,7 +54,7 @@ foreach ($users as $u) {
     // ── 2. Anti double-send ──────────────────────────────────────────────────
     $markerCek = "[uid:{$uid}|jam:{$jam}|tgl:{$today}]";
     $sudah = sirey_fetch(sirey_query(
-        'SELECT 1 FROM notifikasi_rayhanRP
+        'SELECT 1 FROM notifikasi_rayhanrp
          WHERE tipe = "tugas"
            AND pesan LIKE ?
            AND DATE(waktu_kirim) = ?
@@ -73,12 +73,12 @@ foreach ($users as $u) {
         'SELECT t.judul, t.tenggat,
                 COALESCE(mp.nama, "-") AS matpel,
                 COALESCE(g.nama_grup, "Perorangan") AS nama_grup
-         FROM tugas_rayhanRP t
-         JOIN grup_anggota_rayhanRP ga
+         FROM tugas_rayhanrp t
+         JOIN grup_anggota_rayhanrp ga
               ON ga.grup_id = t.grup_id AND ga.akun_id = ? AND ga.aktif = 1
-         LEFT JOIN mata_pelajaran_rayhanRP mp ON mp.matpel_id = t.matpel_id
-         LEFT JOIN grup_rayhanRP g            ON g.grup_id    = t.grup_id
-         LEFT JOIN pengumpulan_rayhanRP p
+         LEFT JOIN mata_pelajaran_rayhanrp mp ON mp.matpel_id = t.matpel_id
+         LEFT JOIN grup_rayhanrp g            ON g.grup_id    = t.grup_id
+         LEFT JOIN pengumpulan_rayhanrp p
               ON p.tugas_id = t.tugas_id AND p.akun_id = ?
          WHERE DATE(t.tenggat) = ?
            AND t.status = "active"
@@ -89,11 +89,11 @@ foreach ($users as $u) {
          SELECT t.judul, t.tenggat,
                 COALESCE(mp.nama, "-") AS matpel,
                 "Perorangan" AS nama_grup
-         FROM tugas_rayhanRP t
-         JOIN tugas_perorang_rayhanRP tp
+         FROM tugas_rayhanrp t
+         JOIN tugas_perorang_rayhanrp tp
               ON tp.tugas_id = t.tugas_id AND tp.akun_id = ?
-         LEFT JOIN mata_pelajaran_rayhanRP mp ON mp.matpel_id = t.matpel_id
-         LEFT JOIN pengumpulan_rayhanRP p
+         LEFT JOIN mata_pelajaran_rayhanrp mp ON mp.matpel_id = t.matpel_id
+         LEFT JOIN pengumpulan_rayhanrp p
               ON p.tugas_id = t.tugas_id AND p.akun_id = ?
          WHERE DATE(t.tenggat) = ?
            AND t.status = "active"
@@ -127,7 +127,7 @@ foreach ($users as $u) {
     // ── 5. Kirim & catat ─────────────────────────────────────────────────────
     if (sendMsg($chatId, $pesan)) {
         sirey_execute(
-            'INSERT INTO notifikasi_rayhanRP (tipe, pesan, jumlah_terkirim, waktu_kirim)
+            'INSERT INTO notifikasi_rayhanrp (tipe, pesan, jumlah_terkirim, waktu_kirim)
              VALUES ("tugas", ?, 1, NOW())',
             's', $pesan . " {$markerCek}"
         );

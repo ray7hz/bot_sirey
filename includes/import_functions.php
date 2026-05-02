@@ -3,7 +3,6 @@
  * Fungsi helper untuk import Excel dan manage grup
  * Format Excel dummy yang didukung:
  *   NO | NAMA | NIS | L/P
- * Kolom "KELAS" juga didukung jika suatu saat ditambahkan.
  */
 
 if (!class_exists('PhpOffice\\PhpSpreadsheet\\IOFactory')) {
@@ -88,9 +87,6 @@ function parseExcelFile(string $filePath): array
             'lp' => 'jenis_kelamin',
             'jenis kelamin' => 'jenis_kelamin',
             'jk' => 'jenis_kelamin',
-            'kelas' => 'kelas',
-            'grup' => 'kelas',
-            'group' => 'kelas',
             'no' => 'no',
         ];
 
@@ -160,11 +156,6 @@ function parseExcelFile(string $filePath): array
                 $jk = normalizeJenisKelamin($row[$headerMap['jenis_kelamin']]);
             }
 
-            if (array_key_exists('kelas', $headerMap) && isset($row[$headerMap['kelas']])) {
-                $kelas = trim((string)$row[$headerMap['kelas']]);
-                $kelas = $kelas !== '' ? $kelas : null;
-            }
-
             if ($nis === '' && $nama === '') {
                 continue;
             }
@@ -177,7 +168,6 @@ function parseExcelFile(string $filePath): array
                 'nama' => $nama,
                 'nis' => $nis,
                 'jenis_kelamin' => $jk,
-                'kelas' => $kelas,
             ];
         }
 
@@ -197,7 +187,7 @@ function parseExcelFile(string $filePath): array
 function getAllGrups(mixed $database_rayhanrp): array
 {
     $pernyataan_rayhanrp = sirey_query(
-        'SELECT grup_id, nama_grup FROM grup_rayhanRP ORDER BY nama_grup ASC',
+        'SELECT grup_id, nama_grup FROM grup_rayhanrp ORDER BY nama_grup ASC',
         ''
     );
 
@@ -215,7 +205,7 @@ function getAllGrups(mixed $database_rayhanrp): array
 function getGrupName(mixed $database_rayhanrp, int $id_grup_rayhanrp): ?string
 {
     $pernyataan_rayhanrp = sirey_query(
-        'SELECT nama_grup FROM grup_rayhanRP WHERE grup_id = ? LIMIT 1',
+        'SELECT nama_grup FROM grup_rayhanrp WHERE grup_id = ? LIMIT 1',
         'i',
         $id_grup_rayhanrp
     );
@@ -236,7 +226,7 @@ function getOrCreateGrup(mixed $database_rayhanrp, string $nama_grup_rayhanrp): 
     }
 
     $pernyataan_rayhanrp = sirey_query(
-        'SELECT grup_id FROM grup_rayhanRP WHERE nama_grup = ? LIMIT 1',
+        'SELECT grup_id FROM grup_rayhanrp WHERE nama_grup = ? LIMIT 1',
         's',
         $nama_grup_rayhanrp
     );
@@ -249,7 +239,7 @@ function getOrCreateGrup(mixed $database_rayhanrp, string $nama_grup_rayhanrp): 
     }
 
     $hasil_rayhanrp = sirey_execute(
-        'INSERT INTO grup_rayhanRP (nama_grup) VALUES (?)',
+        'INSERT INTO grup_rayhanrp (nama_grup) VALUES (?)',
         's',
         $nama_grup_rayhanrp
     );
@@ -304,7 +294,7 @@ function importSiswaKeKelasDariExcel(string $path_file_rayhanrp, int $id_grup_ra
 
         $akun_rayhanrp = sirey_fetch(sirey_query(
             'SELECT akun_id, nama_lengkap
-             FROM akun_rayhanRP
+             FROM akun_rayhanrp
              WHERE nis_nip = ? AND role = "siswa"
              LIMIT 1',
             's',
@@ -318,7 +308,7 @@ function importSiswaKeKelasDariExcel(string $path_file_rayhanrp, int $id_grup_ra
         }
 
         $hasil_rayhanrp = sirey_execute(
-            'INSERT INTO grup_anggota_rayhanRP (grup_id, akun_id, tipe_keanggotaan, aktif)
+            'INSERT INTO grup_anggota_rayhanrp (grup_id, akun_id, tipe_keanggotaan, aktif)
              VALUES (?, ?, "tambahan", 1)
              ON DUPLICATE KEY UPDATE aktif = 1',
             'ii',
@@ -346,27 +336,44 @@ function importSiswaKeKelasDariExcel(string $path_file_rayhanrp, int $id_grup_ra
 /**
  * Import pengguna baru ke tabel master dari Excel.
  */
-function importUsersFromExcel(mixed $database_rayhanrp, string $path_file_rayhanrp, ?int $id_grup_override_rayhanrp = null): array
+function importUsersFromExcel(mixed $database_rayhanrp, string $path_file_rayhanrp): array
 {
+    // Validasi file path
+    if (!file_exists($path_file_rayhanrp)) {
+        error_log('[importUsersFromExcel] File not found: ' . $path_file_rayhanrp);
+        return ['success' => false, 'error' => 'File tidak ditemukan: ' . $path_file_rayhanrp];
+    }
+
+    // Parse Excel file
     $hasil_parsing_rayhanrp = parseExcelFile($path_file_rayhanrp);
     if (isset($hasil_parsing_rayhanrp['error'])) {
+        error_log('[importUsersFromExcel] Parse error: ' . $hasil_parsing_rayhanrp['error']);
         return ['success' => false, 'error' => $hasil_parsing_rayhanrp['error']];
     }
 
     $data_rayhanrp = $hasil_parsing_rayhanrp['data'] ?? [];
+    
+    if (empty($data_rayhanrp)) {
+        error_log('[importUsersFromExcel] No data found in Excel file');
+        return ['success' => false, 'error' => 'Tidak ada data ditemukan di file Excel'];
+    }
+    
+    error_log('[importUsersFromExcel] Starting import with ' . count($data_rayhanrp) . ' rows');
+    
     $jumlah_imported_rayhanrp = 0;
     $jumlah_gagal_rayhanrp = 0;
     $daftar_error_rayhanrp = [];
 
-    foreach ($data_rayhanrp as $baris_rayhanrp) {
+    foreach ($data_rayhanrp as $idx => $baris_rayhanrp) {
         $nis_rayhanrp = trim((string)($baris_rayhanrp['nis'] ?? ''));
         $nama_rayhanrp = trim((string)($baris_rayhanrp['nama'] ?? ''));
         $jenis_kelamin_rayhanrp = $baris_rayhanrp['jenis_kelamin'] ?? null;
-        $kelas_rayhanrp = trim((string)($baris_rayhanrp['kelas'] ?? ''));
 
         if ($nis_rayhanrp === '' || $nama_rayhanrp === '') {
             $jumlah_gagal_rayhanrp++;
-            $daftar_error_rayhanrp[] = 'Baris kosong atau NIS/Nama tidak lengkap';
+            $err = "Baris " . ($idx + 2) . ": NIS/Nama tidak lengkap";
+            $daftar_error_rayhanrp[] = $err;
+            error_log('[importUsersFromExcel] ' . $err);
             continue;
         }
 
@@ -375,21 +382,17 @@ function importUsersFromExcel(mixed $database_rayhanrp, string $path_file_rayhan
             's',
             $nis_rayhanrp
         );
+        
         if ($hasil_cek_rayhanrp && sirey_fetch($hasil_cek_rayhanrp)) {
             $jumlah_gagal_rayhanrp++;
-            $daftar_error_rayhanrp[] = "NIS/NIP $nis_rayhanrp sudah ada, dilewati";
+            $err = "NIS $nis_rayhanrp ($nama_rayhanrp): sudah terdaftar, dilewati";
+            $daftar_error_rayhanrp[] = $err;
+            error_log('[importUsersFromExcel] ' . $err);
             continue;
         }
 
         $role_rayhanrp = 'siswa';
         $password_hash_rayhanrp = hashPassword($nis_rayhanrp);
-
-        $id_grup_simpan_rayhanrp = null;
-        if (!empty($id_grup_override_rayhanrp)) {
-            $id_grup_simpan_rayhanrp = (int)$id_grup_override_rayhanrp;
-        } elseif ($kelas_rayhanrp !== '') {
-            $id_grup_simpan_rayhanrp = getOrCreateGrup($database_rayhanrp, $kelas_rayhanrp);
-        }
 
         $hasil_rayhanrp = sirey_execute(
             'INSERT INTO akun_rayhanRP (nis_nip, password, role, nama_lengkap, jenis_kelamin)
@@ -404,18 +407,19 @@ function importUsersFromExcel(mixed $database_rayhanrp, string $path_file_rayhan
 
         if ($hasil_rayhanrp < 1) {
             $jumlah_gagal_rayhanrp++;
-            $daftar_error_rayhanrp[] = "NIS $nis_rayhanrp: gagal insert";
+            $err = "NIS $nis_rayhanrp ($nama_rayhanrp): gagal insert ke database";
+            $daftar_error_rayhanrp[] = $err;
+            error_log('[importUsersFromExcel] ' . $err . ' - DB Error: ' . sirey_lastDbError());
             continue;
         }
 
         $id_akun_rayhanrp = (int)sirey_lastInsertId();
-
-        if ($id_grup_simpan_rayhanrp !== null) {
-            syncPrimaryGroup($id_akun_rayhanrp, $id_grup_simpan_rayhanrp);
-        }
+        error_log('[importUsersFromExcel] Created user ID ' . $id_akun_rayhanrp . ': ' . $nis_rayhanrp);
 
         $jumlah_imported_rayhanrp++;
     }
+
+    error_log('[importUsersFromExcel] Import complete: ' . $jumlah_imported_rayhanrp . ' imported, ' . $jumlah_gagal_rayhanrp . ' failed');
 
     return [
         'success' => ($jumlah_imported_rayhanrp > 0),
