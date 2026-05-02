@@ -17,7 +17,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireNotReadonly($data_admin_rayhanrp, 'manage_guru_mengajar.php');
     $aksi = (string)($_POST['act'] ?? '');
 
-    if ($aksi === 'create') {
+    if ($aksi === 'assign_wali') {
+        $grupId = (int)($_POST['grup_id'] ?? 0);
+        $waliId = (int)($_POST['wali_id'] ?? 0);
+
+        if ($grupId <= 0) { $error = 'Kelas tidak valid.'; }
+        else {
+            if ($waliId > 0) {
+                sirey_execute('UPDATE grup_rayhanRP SET wali_kelas_id=? WHERE grup_id=?','ii',$waliId,$grupId);
+                auditLog($data_admin_rayhanrp['id'],'assign_wali_kelas','grup',$grupId,['wali_kelas_id'=>$waliId]);
+                $pesan = 'Wali kelas berhasil ditugaskan.';
+            } else {
+                sirey_execute('UPDATE grup_rayhanRP SET wali_kelas_id=NULL WHERE grup_id=?','i',$grupId);
+                auditLog($data_admin_rayhanrp['id'],'remove_wali_kelas','grup',$grupId);
+                $pesan = 'Wali kelas berhasil dihapus.';
+            }
+        }
+
+    } elseif ($aksi === 'create') {
         $akunId   = (int)($_POST['akun_id'] ?? 0);
         $grupId   = (int)($_POST['grup_id'] ?? 0);
         $matpelId = (int)($_POST['matpel_id'] ?? 0);
@@ -100,6 +117,7 @@ $daftar = $types ? sirey_fetchAll(sirey_query($sql,$types,...$params)) : sirey_f
 $daftarGuru   = sirey_fetchAll(sirey_query('SELECT akun_id,nama_lengkap FROM akun_rayhanRP WHERE role="guru" ORDER BY nama_lengkap ASC'));
 $daftarGrup   = sirey_fetchAll(sirey_query('SELECT grup_id,nama_grup,jurusan FROM grup_rayhanRP WHERE aktif=1 ORDER BY nama_grup ASC'));
 $daftarMatpel = sirey_fetchAll(sirey_query('SELECT matpel_id,kode,nama FROM mata_pelajaran_rayhanRP WHERE aktif=1 ORDER BY nama ASC'));
+
 ?>
 
 <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -107,9 +125,14 @@ $daftarMatpel = sirey_fetchAll(sirey_query('SELECT matpel_id,kode,nama FROM mata
     <h2><i class="bi bi-building-fill text-primary me-2"></i>Manajemen Guru Mengajar</h2>
     <p>Tetapkan guru ke kelas dan mata pelajaran beserta jadwal mengajar.</p>
   </div>
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambah">
-    <i class="bi bi-plus-lg me-1"></i>Tambah Assignment
-  </button>
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambah">
+      <i class="bi bi-plus-lg me-1"></i>Tambah Assignment
+    </button>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalWaliKelas">
+      <i class="bi bi-plus-lg me-1"></i>Wali Kelas
+    </button>
+  </div>
 </div>
 
 <?php if ($pesan !== ''): ?>
@@ -254,7 +277,7 @@ $daftarMatpel = sirey_fetchAll(sirey_query('SELECT matpel_id,kode,nama FROM mata
             <div class="col-sm-6">
               <label class="form-label">Guru <span class="text-danger">*</span></label>
               <select name="akun_id" class="form-select" required>
-                <option value="">— Pilih Guru —</option>
+                <option value="">Pilih Guru</option>
                 <?php foreach ($daftarGuru as $g): ?>
                   <option value="<?php echo $g['akun_id']; ?>"><?php echo htmlspecialchars($g['nama_lengkap']); ?></option>
                 <?php endforeach; ?>
@@ -263,7 +286,7 @@ $daftarMatpel = sirey_fetchAll(sirey_query('SELECT matpel_id,kode,nama FROM mata
             <div class="col-sm-6">
               <label class="form-label">Kelas <span class="text-danger">*</span></label>
               <select name="grup_id" class="form-select" required>
-                <option value="">— Pilih Kelas —</option>
+                <option value="">Pilih Kelas</option>
                 <?php foreach ($daftarGrup as $g): ?>
                   <option value="<?php echo $g['grup_id']; ?>"><?php echo htmlspecialchars($g['nama_grup']); ?></option>
                 <?php endforeach; ?>
@@ -272,7 +295,7 @@ $daftarMatpel = sirey_fetchAll(sirey_query('SELECT matpel_id,kode,nama FROM mata
             <div class="col-sm-6">
               <label class="form-label">Mata Pelajaran <span class="text-danger">*</span></label>
               <select name="matpel_id" class="form-select" required>
-                <option value="">— Pilih Mapel —</option>
+                <option value="">Pilih Mapel</option>
                 <?php foreach ($daftarMatpel as $mp): ?>
                   <option value="<?php echo $mp['matpel_id']; ?>"><?php echo htmlspecialchars($mp['kode'].' — '.$mp['nama']); ?></option>
                 <?php endforeach; ?>
@@ -281,7 +304,7 @@ $daftarMatpel = sirey_fetchAll(sirey_query('SELECT matpel_id,kode,nama FROM mata
             <div class="col-sm-6">
               <label class="form-label">Hari <span class="text-danger">*</span></label>
               <select name="hari" class="form-select" required>
-                <option value="">— Pilih Hari —</option>
+                <option value="">Pilih Hari</option>
                 <?php foreach ($hari_list as $h): ?>
                   <option value="<?php echo $h; ?>"><?php echo $h; ?></option>
                 <?php endforeach; ?>
@@ -323,7 +346,7 @@ $daftarMatpel = sirey_fetchAll(sirey_query('SELECT matpel_id,kode,nama FROM mata
             <div class="col-12">
               <label class="form-label">Hari <span class="text-danger">*</span></label>
               <select name="hari" id="edit_hari" class="form-select" required>
-                <option value="">— Pilih Hari —</option>
+                <option value="">Pilih Hari</option>
                 <?php foreach ($hari_list as $h): ?>
                   <option value="<?php echo $h; ?>"><?php echo $h; ?></option>
                 <?php endforeach; ?>
@@ -342,6 +365,52 @@ $daftarMatpel = sirey_fetchAll(sirey_query('SELECT matpel_id,kode,nama FROM mata
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
           <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL WALI KELAS -->
+<div class="modal fade" id="modalWaliKelas" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST">
+        <input type="hidden" name="act" value="assign_wali">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-person-check me-2"></i>Atur Wali Kelas</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Kelas <span class="text-danger">*</span></label>
+              <select name="grup_id" id="wali_grup_id" class="form-select" required>
+                <option value="">Pilih Kelas</option>
+                <?php foreach ($daftarGrup as $g): ?>
+                  <option value="<?php echo $g['grup_id']; ?>">
+                    <?php echo htmlspecialchars($g['nama_grup']); ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Wali Kelas <span class="text-danger">*</span></label>
+              <select name="wali_id" id="wali_guru_id" class="form-select" required>
+                <option value="">Pilih Guru</option>
+                <?php foreach ($daftarGuru as $g): ?>
+                  <option value="<?php echo $g['akun_id']; ?>"><?php echo htmlspecialchars($g['nama_lengkap']); ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="alert alert-info mt-3" style="font-size:13px;">
+            <i class="bi bi-info-circle me-2"></i>Pilih guru untuk menjadi wali kelas.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i>Simpan</button>
         </div>
       </form>
     </div>

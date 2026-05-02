@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // ================================================================
-// index.php – Entry point webhook Bot SiRey
+// index.php – Entry point webhook
 // Semua update dari Telegram masuk ke sini.
 // ================================================================
 
@@ -204,7 +204,7 @@ if ($user === null) {
     setState($chatId, ['step' => 'ask_nis']);
     sendMsgRemoveKeyboard(
         $chatId,
-        "👋 Selamat datang di *Bot SiRey*!\n\n"
+        "👋 Selamat datang di *SKADACI BOT*!\n\n"
         . "Silakan login untuk menggunakan bot ini.\n\n"
         . "Masukkan *NIS/NIP* Anda:"
     );

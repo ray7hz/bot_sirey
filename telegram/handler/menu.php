@@ -406,7 +406,7 @@ function handleMenu(string $text, int $chatId, array $user): bool
         sendMsgRemoveKeyboard(
             $chatId,
             "✅ Anda berhasil *logout*.\n\n"
-                . "Terima kasih telah menggunakan Bot SiRey! 👋\n\n"
+                . "Terima kasih telah menggunakan SKADACI BOT! 👋\n\n"
                 . "Ketik /start untuk login kembali."
         );
         return true;

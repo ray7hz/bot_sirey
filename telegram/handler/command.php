@@ -43,7 +43,7 @@ function handleCommand(string $text, int $chatId, ?array $user): bool
             setState($chatId, ['step' => 'ask_nis']);
             sendMsgRemoveKeyboard(
                 $chatId,
-                "👋 Selamat datang di *Bot SiRey*!\n\n"
+                "👋 Selamat datang di *SKADACI BOT*!\n\n"
                 . "🏫 _Sistem Informasi Sekolah berbasis Telegram_\n\n"
                 . "Silakan login untuk melanjutkan.\n"
                 . "Masukkan *NIS/NIP* Anda:"
@@ -55,7 +55,7 @@ function handleCommand(string $text, int $chatId, ?array $user): bool
 
     // ── /help ────────────────────────────────────────────────────
     if ($text === '/help' || $text === '/bantuan') {
-        $pesan = "ℹ️ *Bantuan Bot SiRey*\n\n"
+        $pesan = "ℹ️ *Bantuan SKADACI BOT*\n\n"
                . "*Perintah yang tersedia:*\n"
                . "`/start` — Masuk ke bot / tampilkan menu\n"
                . "`/logout` — Keluar dari akun\n"
@@ -112,7 +112,7 @@ function handleCommand(string $text, int $chatId, ?array $user): bool
         sendMsgRemoveKeyboard(
             $chatId,
             "✅ Anda berhasil *logout*.\n\n"
-            . "Terima kasih telah menggunakan Bot SiRey! 👋\n\n"
+            . "Terima kasih telah menggunakan SKADACI BOT! 👋\n\n"
             . "Ketik /start untuk login kembali."
         );
 

@@ -504,7 +504,7 @@ function renderPenilaian(tugas, rows, poinMax) {
       let jawabanHtml = '—';
       if (r.file_path) jawabanHtml = `<a href="../${r.file_path}" target="_blank" class="btn btn-xs btn-outline-primary btn-sm"><i class="bi bi-paperclip"></i> File</a>`;
       else if (r.link_jawaban) jawabanHtml = `<a href="${r.link_jawaban}" target="_blank" class="btn btn-xs btn-outline-info btn-sm"><i class="bi bi-link-45deg"></i> Link</a>`;
-      else if (r.teks_jawaban) jawabanHtml = `<button class="btn btn-sm btn-outline-secondary" onclick="lihatTeks(${JSON.stringify(r.teks_jawaban)}, '${r.nama_lengkap.replace(/'/g,'&apos;')}')"><i class="bi bi-chat-text"></i> Lihat</button>`;
+      else if (r.teks_jawaban) jawabanHtml = `<button class="btn btn-sm btn-outline-secondary btn-lihat-teks" data-teks-id="${r.pengumpulan_id}" data-teks="${btoa(unescape(encodeURIComponent(r.teks_jawaban)))}" data-nama="${btoa(unescape(encodeURIComponent(r.nama_lengkap)))}"><i class="bi bi-chat-text"></i> Lihat</button>`;
 
       html += `<tr id="row${r.pengumpulan_id}">
         <td><div class="fw-600" style="font-size:13px;">${r.nama_lengkap}</div><div class="text-muted" style="font-size:11px;">${r.nis_nip}</div></td>
@@ -539,6 +539,15 @@ function renderPenilaian(tugas, rows, poinMax) {
     html += '</tbody></table></div>';
   }
   document.getElementById('penilaianBody').innerHTML = html;
+  
+  // Attach event listeners for text answer buttons
+  document.querySelectorAll('.btn-lihat-teks').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const teks = decodeURIComponent(escape(atob(this.dataset.teks)));
+      const nama = decodeURIComponent(escape(atob(this.dataset.nama)));
+      lihatTeks(teks, nama);
+    });
+  });
 }
 
 function updateBar(pid, val, max) {

@@ -9,13 +9,7 @@
         "step": "menu"
     },
     "5021279827": {
-        "step": "menu",
-        "user_cache": {
-            "akun_id": 32,
-            "nama_lengkap": "RAHMA KHOYRUL HAWA",
-            "role": "siswa",
-            "nis_nip": "10243311"
-        }
+        "step": "ask_nis"
     },
     "1355009630": {
         "step": "menu",
