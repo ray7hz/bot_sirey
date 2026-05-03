@@ -16,9 +16,13 @@ $totalAkun   = 0;
 $totalGrup   = 0;
 $totalJadwal = 0;
 $totalTugas  = 0;
+$totalMatpel = 0;
 
 $r = sirey_fetch(sirey_query('SELECT COUNT(*) AS t FROM akun_rayhanRP'));
 $totalAkun = (int)($r['t'] ?? 0);
+
+$r = sirey_fetch(sirey_query('SELECT COUNT(*) AS t FROM mata_pelajaran_rayhanRP'));
+$totalMatpel = (int)($r['t'] ?? 0);
 
 $r = sirey_fetch(sirey_query('SELECT COUNT(*) AS t FROM grup_rayhanRP'));
 $totalGrup = (int)($r['t'] ?? 0);
@@ -79,6 +83,20 @@ $recentActivity = sirey_fetchAll(sirey_query(
      LEFT JOIN akun_rayhanRP a ON al.akun_id=a.akun_id
      ORDER BY al.waktu DESC LIMIT 8"
 ));
+
+// Reset password log (untuk admin, kurikulum, kepala_sekolah)
+$resetLogs = [];
+if (in_array($data_admin_rayhanrp['role'], ['admin', 'kurikulum', 'kepala_sekolah'], true)) {
+    $resetLogs = sirey_fetchAll(sirey_query(
+        'SELECT r.log_id,r.alasan,r.status,r.waktu,
+                target.nama_lengkap AS target_nama,
+                actor.nama_lengkap AS actor_nama
+         FROM reset_password_log_rayhanRP r
+         INNER JOIN akun_rayhanRP target ON r.target_akun_id=target.akun_id
+         INNER JOIN akun_rayhanRP actor  ON r.direset_oleh=actor.akun_id
+         ORDER BY r.waktu DESC LIMIT 10'
+    ));
+}
 ?>
 
 <!-- Page Header -->
@@ -96,99 +114,143 @@ $recentActivity = sirey_fetchAll(sirey_query(
 <!-- ── Stat Cards ── -->
 <div class="row g-3 mb-4">
 
-  <?php if (!in_array($data_admin_rayhanrp['role'], ['guru','kurikulum'], true)): ?>
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#dbeafe;">
-        <i class="bi bi-people-fill" style="color:#2563eb;"></i>
-      </div>
-      <div>
-        <div class="stat-value"><?php echo number_format($totalAkun); ?></div>
-        <div class="stat-label">Total Akun</div>
+  <?php if ($data_admin_rayhanrp['role'] === 'admin'): ?>
+    <!-- Admin Dashboard: Only show Total Akun and Total Mata Pelajaran -->
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;">
+          <i class="bi bi-people-fill" style="color:#2563eb;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo number_format($totalAkun); ?></div>
+          <div class="stat-label">Total Akun</div>
+        </div>
       </div>
     </div>
-  </div>
-  <?php endif; ?>
 
-  <?php if ($data_admin_rayhanrp['role'] !== 'guru'): ?>
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#d1fae5;">
-        <i class="bi bi-mortarboard-fill" style="color:#059669;"></i>
-      </div>
-      <div>
-        <div class="stat-value"><?php echo number_format($totalGrup); ?></div>
-        <div class="stat-label">Grup / Kelas</div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;">
+          <i class="bi bi-book-fill" style="color:#2563eb;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo number_format($totalMatpel); ?></div>
+          <div class="stat-label">Total Mata Pelajaran</div>
+        </div>
       </div>
     </div>
-  </div>
-  <?php endif; ?>
+  <?php else: ?>
+    <!-- Non-admin Dashboard: Show stat cards -->
+    <!-- Total Mata Pelajaran (untuk kepala sekolah & kurikulum) -->
+    <?php if (in_array($data_admin_rayhanrp['role'], ['kepala_sekolah', 'kurikulum'], true)): ?>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;">
+          <i class="bi bi-book-fill" style="color:#2563eb;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo number_format($totalMatpel); ?></div>
+          <div class="stat-label">Total Mata Pelajaran</div>
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
 
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#fef3c7;">
-        <i class="bi bi-calendar3" style="color:#d97706;"></i>
-      </div>
-      <div>
-        <div class="stat-value"><?php echo number_format($totalJadwal); ?></div>
-        <div class="stat-label">Jadwal Aktif</div>
+    <?php if (!in_array($data_admin_rayhanrp['role'], ['guru','kurikulum'], true)): ?>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;">
+          <i class="bi bi-people-fill" style="color:#2563eb;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo number_format($totalAkun); ?></div>
+          <div class="stat-label">Total Akun</div>
+        </div>
       </div>
     </div>
-  </div>
+    <?php endif; ?>
 
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#ede9fe;">
-        <i class="bi bi-journal-text" style="color:#7c3aed;"></i>
-      </div>
-      <div>
-        <div class="stat-value"><?php echo number_format($totalTugas); ?></div>
-        <div class="stat-label">Total Tugas</div>
+    <?php if ($data_admin_rayhanrp['role'] !== 'guru'): ?>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#d1fae5;">
+          <i class="bi bi-mortarboard-fill" style="color:#059669;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo number_format($totalGrup); ?></div>
+          <div class="stat-label">Grup / Kelas</div>
+        </div>
       </div>
     </div>
-  </div>
+    <?php endif; ?>
 
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#d1fae5;">
-        <i class="bi bi-check-circle-fill" style="color:#059669;"></i>
-      </div>
-      <div>
-        <div class="stat-value"><?php echo $tugasAktif; ?></div>
-        <div class="stat-label">Tugas Berlangsung</div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fef3c7;">
+          <i class="bi bi-calendar3" style="color:#d97706;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo number_format($totalJadwal); ?></div>
+          <div class="stat-label">Jadwal Aktif</div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#dbeafe;">
-        <i class="bi bi-inbox-fill" style="color:#2563eb;"></i>
-      </div>
-      <div>
-        <div class="stat-value"><?php echo $kumpulHariIni; ?></div>
-        <div class="stat-label">Kumpul Hari Ini</div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#ede9fe;">
+          <i class="bi bi-journal-text" style="color:#7c3aed;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo number_format($totalTugas); ?></div>
+          <div class="stat-label">Total Tugas</div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <?php if (in_array($data_admin_rayhanrp['role'], ['guru','admin','kurikulum'], true)): ?>
-  <div class="col-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#fee2e2;">
-        <i class="bi bi-hourglass-split" style="color:#dc2626;"></i>
-      </div>
-      <div>
-        <div class="stat-value"><?php echo $belumDinilai; ?></div>
-        <div class="stat-label">Belum Dinilai</div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#d1fae5;">
+          <i class="bi bi-check-circle-fill" style="color:#059669;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo $tugasAktif; ?></div>
+          <div class="stat-label">Tugas Berlangsung</div>
+        </div>
       </div>
     </div>
-  </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;">
+          <i class="bi bi-inbox-fill" style="color:#2563eb;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo $kumpulHariIni; ?></div>
+          <div class="stat-label">Kumpul Hari Ini</div>
+        </div>
+      </div>
+    </div>
+
+    <?php if (in_array($data_admin_rayhanrp['role'], ['guru','admin','kurikulum'], true)): ?>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fee2e2;">
+          <i class="bi bi-hourglass-split" style="color:#dc2626;"></i>
+        </div>
+        <div>
+          <div class="stat-value"><?php echo $belumDinilai; ?></div>
+          <div class="stat-label">Belum Dinilai</div>
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
   <?php endif; ?>
 
 </div>
 
 <!-- ── Row: Deadline + Aktivitas ── -->
+<?php if ($data_admin_rayhanrp['role'] !== 'admin'): ?>
 <div class="row g-3 mb-4">
 
   <!-- Deadline tugas -->
@@ -241,7 +303,7 @@ $recentActivity = sirey_fetchAll(sirey_query(
   </div>
 
   <!-- Notifikasi terbaru -->
-  <?php if ($data_admin_rayhanrp['role'] !== 'guru'): ?>
+  <?php if ($data_admin_rayhanrp['role'] !== 'guru' && $data_admin_rayhanrp['role'] !== 'admin'): ?>
   <div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between">
@@ -293,10 +355,11 @@ $recentActivity = sirey_fetchAll(sirey_query(
   <?php endif; ?>
 
 </div>
+<?php endif; ?>
 
-<!-- Aktivitas terbaru (audit log) – hanya kepala sekolah & admin -->
-<?php if (in_array($data_admin_rayhanrp['role'], ['admin','kepala_sekolah'], true) && !empty($recentActivity)): ?>
-<div class="card">
+<!-- Aktivitas terbaru (audit log) – hanya kepala sekolah -->
+<?php if (in_array($data_admin_rayhanrp['role'], ['kepala_sekolah'], true) && !empty($recentActivity)): ?>
+<div class="card" style="margin-bottom: 25px;">
   <div class="card-header d-flex align-items-center justify-content-between">
     <h5><i class="bi bi-shield-check text-success me-2"></i>Aktivitas Terbaru</h5>
     <a href="audit_log.php" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
@@ -328,6 +391,44 @@ $recentActivity = sirey_fetchAll(sirey_query(
                 </span>
               </td>
               <td class="text-muted" style="font-size:12px;"><?php echo formatDatetime($act['waktu']); ?></td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
+<!-- Riwayat Reset Password (untuk admin, kurikulum, kepala_sekolah) -->
+<?php if (in_array($data_admin_rayhanrp['role'], ['admin', 'kurikulum', 'kepala_sekolah'], true) && !empty($resetLogs)): ?>
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <h5><i class="bi bi-key-fill text-warning me-2"></i>Riwayat Reset Password</h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Waktu</th>
+            <th>Target</th>
+            <th>Oleh</th>
+            <th>Status</th>
+            <th>Alasan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($resetLogs as $log): ?>
+            <tr>
+              <td class="text-muted" style="font-size:12px;"><?php echo formatDatetime($log['waktu']); ?></td>
+              <td><?php echo htmlspecialchars($log['target_nama']); ?></td>
+              <td><?php echo htmlspecialchars($log['actor_nama']); ?></td>
+              <td>
+                <span class="badge <?php echo $log['status']==='berhasil'?'bg-success':($log['status']==='gagal'?'bg-danger':'bg-warning text-dark'); ?>">
+                  <?php echo htmlspecialchars($log['status']); ?></span>
+              </td>
+              <td class="text-muted" style="font-size:12px;"><?php echo htmlspecialchars($log['alasan'] ?? '-'); ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>

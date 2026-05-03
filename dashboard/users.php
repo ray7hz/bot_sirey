@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
                 $error = 'Upload file gagal. Error code: ' . $file['error'];
             } else {
-                $hasil = importUsersFromExcel($db, (string)$file['tmp_name'], null);
+                $hasil = importUsersFromExcel($db, (string)$file['tmp_name']);
                 if (!empty($hasil['success'])) {
                     $pesan = 'Import selesai: '.((int)($hasil['imported'] ?? 0)).' berhasil, '.((int)($hasil['failed'] ?? 0)).' gagal.';
                     if (!empty($hasil['errors'])) {
@@ -310,38 +310,6 @@ $resetLogs = sirey_fetchAll(sirey_query(
     <?php endif; ?>
   </div>
 </div>
-
-<!-- Riwayat Reset Password -->
-<?php if (!empty($resetLogs)): ?>
-<div class="card mb-4">
-  <div class="card-header">
-    <h5><i class="bi bi-key-fill text-warning me-2"></i>Riwayat Reset Password</h5>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table id="tblReset" class="table table-hover mb-0">
-        <thead>
-          <tr><th>Waktu</th><th>Target</th><th>Oleh</th><th>Status</th><th>Alasan</th></tr>
-        </thead>
-        <tbody>
-          <?php foreach ($resetLogs as $log): ?>
-            <tr>
-              <td class="text-muted" style="font-size:12px;"><?php echo formatDatetime($log['waktu']); ?></td>
-              <td><?php echo htmlspecialchars($log['target_nama']); ?></td>
-              <td><?php echo htmlspecialchars($log['actor_nama']); ?></td>
-              <td>
-                <span class="badge <?php echo $log['status']==='berhasil'?'bg-success':($log['status']==='gagal'?'bg-danger':'bg-warning text-dark'); ?>">
-                  <?php echo $log['status']; ?></span>
-              </td>
-              <td class="text-muted" style="font-size:12px;"><?php echo htmlspecialchars($log['alasan'] ?? '-'); ?></td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-<?php endif; ?>
 
 <?php if ($bisa_tulis): ?>
 

@@ -134,14 +134,8 @@ foreach ($users as $u) {
         $pesan .= "_Semangat hari ini!_ 💪";
     }
 
-    // ── 5. Kirim & catat ─────────────────────────────────────────────────────
+    // ── 5. Kirim (tanpa catat di database) ──────────────────────────────────
     if (sendMsg($chatId, $pesan)) {
-        $marker = $markerCek; // "[uid:X|jam:H:i|tgl:Y-m-d]"
-        sirey_execute(
-            'INSERT INTO notifikasi_rayhanRP (tipe, pesan, jumlah_terkirim, waktu_kirim)
-             VALUES ("jadwal", ?, 1, NOW())',
-            's', $pesan . " {$marker}"
-        );
         $terkirim++;
         error_log("[notif_jadwal] ✅ Terkirim → uid={$uid} ({$u['nama_lengkap']})");
     } else {

@@ -29,10 +29,9 @@ try {
     $sheet->getColumnDimension('B')->setWidth(25);
     $sheet->getColumnDimension('C')->setWidth(12);
     $sheet->getColumnDimension('D')->setWidth(8);
-    $sheet->getColumnDimension('E')->setWidth(15);
     
     // Header row
-    $headers = ['NO', 'NAMA', 'NIS', 'L/P', 'KELAS'];
+    $headers = ['NO', 'NAMA', 'NIS', 'L/P'];
     $sheet->fromArray($headers, NULL, 'A1');
     
     // Style header
@@ -42,22 +41,22 @@ try {
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
     ];
     
-    for ($col = 'A'; $col <= 'E'; $col++) {
+    for ($col = 'A'; $col <= 'D'; $col++) {
         $sheet->getStyle($col . '1')->applyFromArray($headerStyle);
     }
     
     // Sample data
     $sampleData = [
-        [1, 'Adi Pranoto', '001', 'L', 'X-A'],
-        [2, 'Budi Santoso', '002', 'L', 'X-A'],
-        [3, 'Citra Dewi', '003', 'P', 'X-A'],
-        [4, 'Diana Putri', '004', 'P', 'X-B'],
-        [5, 'Eka Wijaya', '005', 'L', 'X-B'],
-        [6, 'Fatimah Zahra', '006', 'P', 'X-B'],
-        [7, 'Guntur Dwi', '007', 'L', 'X-C'],
-        [8, 'Hana Kusumo', '008', 'P', 'X-C'],
-        [9, 'Indra Kusuma', '009', 'L', 'X-C'],
-        [10, 'Joko Santoso', '010', 'L', 'X-C'],
+        [1, 'Adi Pranoto', '001', 'L'],
+        [2, 'Budi Santoso', '002', 'L'],
+        [3, 'Citra Dewi', '003', 'P'],
+        [4, 'Diana Putri', '004', 'P'],
+        [5, 'Eka Wijaya', '005', 'L'],
+        [6, 'Fatimah Zahra', '006', 'P'],
+        [7, 'Guntur Dwi', '007', 'L'],
+        [8, 'Hana Kusumo', '008', 'P'],
+        [9, 'Indra Kusuma', '009', 'L'],
+        [10, 'Joko Santoso', '010', 'L'],
     ];
     
     $sheet->fromArray($sampleData, NULL, 'A2');

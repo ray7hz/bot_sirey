@@ -124,13 +124,8 @@ foreach ($users as $u) {
     }
     $pesan .= "Jangan sampai telat! 📤";
 
-    // ── 5. Kirim & catat ─────────────────────────────────────────────────────
+    // ── 5. Kirim (tanpa catat di database) ──────────────────────────────────
     if (sendMsg($chatId, $pesan)) {
-        sirey_execute(
-            'INSERT INTO notifikasi_rayhanrp (tipe, pesan, jumlah_terkirim, waktu_kirim)
-             VALUES ("tugas", ?, 1, NOW())',
-            's', $pesan . " {$markerCek}"
-        );
         $terkirim++;
         error_log("[notif_tugas] ✅ Terkirim → uid={$uid} ({$u['nama_lengkap']})");
     } else {

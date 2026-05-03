@@ -28,12 +28,12 @@
     },
     "6048830408": {
         "step": "menu",
-        "session_token": "6edf4046d85da6f40efd32e484eb04905901ab9db0fbfbc41c3d33eeb804f752",
+        "session_token": "8e55571f1cd924c8672bb9a912bd3080a7f13e0694e2377bf830bc6f333562c4",
         "user_cache": {
-            "akun_id": 219,
-            "nama_lengkap": "Kiki Juniantie, S.Pd",
-            "role": "guru",
-            "nis_nip": "198006052024212012"
+            "akun_id": 34,
+            "nama_lengkap": "",
+            "role": "siswa",
+            "nis_nip": ""
         }
     }
 }

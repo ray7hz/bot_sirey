@@ -21,6 +21,7 @@ const MENU_ITEMS = [
     'dashboard'            => ['icon' => 'bi-speedometer2',     'label' => 'Dashboard',      'href' => 'dashboard.php',            'permission' => 'view_dashboard'],
     'users'                => ['icon' => 'bi-people-fill',      'label' => 'Pengguna',       'href' => 'users.php',                'permission' => 'view_users'],
     'grup'                 => ['icon' => 'bi-mortarboard-fill', 'label' => 'Kelas',   'href' => 'grup.php',                 'permission' => 'view_grup'],
+    'kelas_saya'           => ['icon' => 'bi-mortarboard',      'label' => 'Kelas Saya',     'href' => 'kelas_saya.php',           'permission' => 'view_kelas_saya'],
     'mata_pelajaran'       => ['icon' => 'bi-book-fill',        'label' => 'Mata Pelajaran', 'href' => 'mata_pelajaran.php',       'permission' => 'view_mata_pelajaran'],
     'manage_guru_mengajar' => ['icon' => 'bi-building-fill',    'label' => 'Manage Guru',  'href' => 'manage_guru_mengajar.php', 'permission' => 'manage_guru_mengajar'],
     'jadwal'               => ['icon' => 'bi-calendar3',        'label' => 'Jadwal',         'href' => 'jadwal.php',               'permission' => 'view_jadwal'],
@@ -543,7 +544,8 @@ if ($stmt_notif) {
   </div>
 
   <div class="navbar-right">
-    <!-- Notifikasi -->
+    <!-- Notifikasi (hidden untuk admin) -->
+    <?php if ($data_admin_rayhanrp['role'] !== 'admin' && $data_admin_rayhanrp['role'] !== 'guru'): ?>
     <a href="notifikasi.php" class="nav-icon-btn" title="Notifikasi">
       <i class="bi bi-bell"></i>
       <?php if ($notif_count > 0): ?>
@@ -552,6 +554,7 @@ if ($stmt_notif) {
     </a>
 
     <div class="nav-divider"></div>
+    <?php endif; ?>
 
     <!-- User Dropdown -->
     <div class="dropdown">
@@ -594,7 +597,7 @@ if ($stmt_notif) {
   <div class="sidebar-section-label">Navigasi</div>
 
   <?php foreach (MENU_ITEMS as $key => $item): ?>
-    <?php if (!menuVisible($item, $data_admin_rayhanrp)) continue; ?>
+    <?php if (!menuVisible($item, $data_admin_rayhanrp)) continue; ?> 
     <a href="<?php echo $item['href']; ?>"
        class="sidebar-link <?php echo $menu_aktif_rayhanrp === $key ? 'active' : ''; ?>">
       <i class="bi <?php echo $item['icon']; ?>"></i>

@@ -266,6 +266,66 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
         return true;
     }
 
+    // ── LIHAT DAFTAR TUGAS: PILIH NOMOR ──────────────────────────
+    if ($step === 'tugas_lihat_daftar') {
+        if ($text === '🔙 Kembali ke Menu') {
+            return _kembaliMenu($chatId, $user);
+        }
+
+        $daftarTugas = (array) ($state['daftar_tugas'] ?? []);
+        $no          = (int) $text;
+
+        if ($no < 1 || $no > count($daftarTugas)) {
+            sendMsg($chatId, "❌ Nomor tidak valid. Pilih dari keyboard di bawah.");
+            return true;
+        }
+
+        $tugas = $daftarTugas[$no - 1];
+        $tugas_id = (int) ($tugas['tugas_id'] ?? 0);
+        
+        if ($tugas_id <= 0) {
+            sendMsg($chatId, "❌ Data tugas tidak valid.");
+            return true;
+        }
+
+        // Ambil detail lengkap tugas
+        $detail = getTugasDetail($tugas_id);
+        if (!$detail) {
+            sendMsg($chatId, "❌ Tugas tidak ditemukan.");
+            return true;
+        }
+
+        $tgl        = date('d/m/Y H:i', strtotime((string) $detail['tenggat']));
+        $sisa       = sisaWaktu((string) $detail['tenggat']);
+        $poin       = (int) $detail['poin_maksimal'];
+        $status     = (int) $tugas['sudah_kumpul'] > 0 ? '✅ Sudah' : '⏳ Belum';
+
+        $pesan = "📝 *Tugas #{$no}*\n\n";
+        $pesan .= "*Judul:* {$detail['judul']}\n\n";
+        
+        if (!empty($detail['deskripsi'])) {
+            $pesan .= "*Deskripsi:*\n{$detail['deskripsi']}\n\n";
+        }
+        
+        $pesan .= "📚 *Mata Pelajaran:* {$detail['matpel']}\n";
+        $pesan .= "🎓 *Kelas:* {$detail['nama_grup']}\n";
+        $pesan .= "📅 *Deadline:* {$tgl}\n";
+        $pesan .= "⏳ *Sisa:* {$sisa}\n";
+        
+        if ($poin > 0) {
+            $pesan .= "⭐ *Poin Maksimal:* {$poin}\n";
+        }
+        
+        $pesan .= "\n{$status} dikumpulkan\n\n";
+        
+        // Kirim detail tugas
+        sendMsg($chatId, $pesan, mainKeyboard((string) $user['role']));
+        
+        // Reset state langsung ke menu
+        _resetKeMenu($chatId, $user);
+        return true;
+    }
+
     // ── KUMPULKAN TUGAS: PILIH TUGAS ─────────────────────────────
     if ($step === 'kumpul_pilih_tugas') {
         if ($text === '🔙 Kembali ke Menu') {

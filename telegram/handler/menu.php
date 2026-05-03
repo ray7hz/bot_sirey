@@ -448,7 +448,7 @@ function _menuTugasGuru(int $chatId, int $uid, string $role): void
 }
 
 /**
- * Tampilkan menu tugas untuk siswa.
+ * Tampilkan menu tugas untuk siswa dengan keyboard nomor.
  */
 function _menuTugasSiswa(int $chatId, int $uid, string $role): void
 {
@@ -458,20 +458,42 @@ function _menuTugasSiswa(int $chatId, int $uid, string $role): void
 
     if (empty($list)) {
         $pesan .= "_(Tidak ada tugas aktif saat ini)_ ✅";
+        sendMsg($chatId, $pesan, mainKeyboard($role));
     } else {
-        foreach ($list as $t) {
+        foreach ($list as $idx => $t) {
+            $no     = $idx + 1;
             $tgl    = date('d/m/Y H:i', strtotime((string) $t['tenggat']));
             $sisa   = sisaWaktu((string) $t['tenggat']);
-            $status = (int) $t['sudah_kumpul'] > 0 ? '✅ Sudah' : '⏳ Belum';
+            $status = (int) $t['sudah_kumpul'] > 0 ? '✅' : '⏳';
+            $statusText = (int) $t['sudah_kumpul'] > 0 ? 'Sudah' : 'Belum';
 
-            $pesan .= "📌 *{$t['judul']}*\n"
+            $pesan .= "*{$no}. {$t['judul']}*\n"
                 . "   📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n"
                 . "   📅 {$tgl} _({$sisa})_\n"
-                . "   {$status} dikumpulkan\n\n";
+                . "   {$status} {$statusText} dikumpulkan\n\n";
         }
-    }
 
-    sendMsg($chatId, $pesan, mainKeyboard($role));
+        // Simpan daftar tugas ke state
+        setState($chatId, [
+            'step'        => 'tugas_lihat_daftar',
+            'daftar_tugas' => $list,
+            'session_token' => getState($chatId)['session_token'] ?? '',
+            'user_cache'  => _buildUserCache([
+                'akun_id'      => $uid,
+                'nama_lengkap' => '',
+                'role'         => $role,
+                'nis_nip'      => '',
+            ]),
+        ]);
+        
+        $pesan .= "Ketik *nomor* tugas untuk melihat detail (contoh: *1*)";
+        
+        // Buat keyboard angka
+        $keyboard = _buildNomorKeyboard(count($list));
+        $keyboard[] = ['🔙 Kembali ke Menu'];
+        
+        sendMsg($chatId, $pesan, $keyboard);
+    }
 }
 
 /**
