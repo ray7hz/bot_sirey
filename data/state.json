@@ -21,19 +21,26 @@
         }
     },
     "8445211581": {
-        "step": "ask_nis"
+        "step": "menu",
+        "session_token": "28da5a7c5a836fca476a809b3d38aab9ec9a7665e18ee8614ff4c75f51e98e0c",
+        "user_cache": {
+            "akun_id": 219,
+            "nama_lengkap": "Kiki Juniantie, S.Pd",
+            "role": "guru",
+            "nis_nip": "198006052024212012"
+        }
     },
     "987654321": {
         "step": "ask_nis"
     },
     "6048830408": {
         "step": "menu",
-        "session_token": "8e55571f1cd924c8672bb9a912bd3080a7f13e0694e2377bf830bc6f333562c4",
+        "session_token": "",
         "user_cache": {
             "akun_id": 34,
-            "nama_lengkap": "",
+            "nama_lengkap": "RAYHAN RIZKY PRATAMA",
             "role": "siswa",
-            "nis_nip": ""
+            "nis_nip": "10243313"
         }
     }
 }

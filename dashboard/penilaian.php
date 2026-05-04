@@ -5,36 +5,6 @@ require_once __DIR__ . '/../koneksi.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/auth.php';
 
-// Fungsi revisi
-function notifySiswaRevisiApproved(int $pid, int $ver, int $guruId, string $catatan = ''): bool {
-    $d = sirey_fetch(sirey_query(
-        'SELECT t.judul,at.telegram_chat_id,guru.nama_lengkap AS guru_nama
-         FROM pengumpulan_rayhanRP p JOIN tugas_rayhanRP t ON p.tugas_id=t.tugas_id
-         JOIN akun_rayhanRP a ON p.akun_id=a.akun_id
-         JOIN akun_telegram_rayhanRP at ON at.akun_id=a.akun_id
-         LEFT JOIN akun_rayhanRP guru ON guru.akun_id=?
-         WHERE p.pengumpulan_id=? LIMIT 1','ii',$guruId,$pid
-    ));
-    if (!$d || !$d['telegram_chat_id']) return false;
-    $msg = "✅ *Revisi Disetujui!*\n\nTugas: *{$d['judul']}* (v{$ver})\nOleh: {$d['guru_nama']}"
-          .($catatan ? "\n\n💬 _{$catatan}_" : '');
-    return sendTelegramMessage((int)$d['telegram_chat_id'], $msg);
-}
-
-function notifySiswaRevisiRejected(int $pid, int $ver, int $guruId, string $catatan): bool {
-    $d = sirey_fetch(sirey_query(
-        'SELECT t.judul,at.telegram_chat_id,guru.nama_lengkap AS guru_nama
-         FROM pengumpulan_rayhanRP p JOIN tugas_rayhanRP t ON p.tugas_id=t.tugas_id
-         JOIN akun_rayhanRP a ON p.akun_id=a.akun_id
-         JOIN akun_telegram_rayhanRP at ON at.akun_id=a.akun_id
-         LEFT JOIN akun_rayhanRP guru ON guru.akun_id=?
-         WHERE p.pengumpulan_id=? LIMIT 1','ii',$guruId,$pid
-    ));
-    if (!$d || !$d['telegram_chat_id']) return false;
-    $msg = "❌ *Revisi Ditolak*\n\nTugas: *{$d['judul']}* (v{$ver})\nOleh: {$d['guru_nama']}\n\n💬 _{$catatan}_\n\nSilakan perbaiki dan kirim ulang.";
-    return sendTelegramMessage((int)$d['telegram_chat_id'], $msg);
-}
-
 // ═══ AJAX ═══
 $aksi_ajax = (string)($_GET['action'] ?? '');
 if ($aksi_ajax !== '') {
@@ -73,10 +43,14 @@ if ($aksi_ajax !== '') {
 
         $pid       = (int)($_POST['pengumpulan_id'] ?? 0);
         $nilai     = (float)($_POST['nilai'] ?? 0);
-        $st_lulus  = in_array($_POST['status_lulus'] ?? '', ['lulus','tidak_lulus','revisi']) ? $_POST['status_lulus'] : 'lulus';
+        $st_lulus  = (string)($_POST['status_lulus'] ?? '');
         $catatan   = trim((string)($_POST['catatan_guru'] ?? ''));
 
         if ($pid <= 0) { echo json_encode(['success'=>false,'message'=>'ID tidak valid.']); exit; }
+        
+        if (!in_array($st_lulus, ['lulus','tidak_lulus','revisi'])) {
+            echo json_encode(['success'=>false,'message'=>'Pilih status penilaian terlebih dahulu.']); exit;
+        }
 
         $dp = sirey_fetch(sirey_query(
             'SELECT p.tugas_id,t.poin_maksimal FROM pengumpulan_rayhanRP p
@@ -114,36 +88,6 @@ if ($aksi_ajax !== '') {
             sendTelegramMessage((int)$tg['telegram_chat_id'], $msg);
         }
         echo json_encode(['success'=>true,'message'=>'Nilai tersimpan.']);
-        exit;
-    }
-
-    if ($aksi_ajax === 'approve_revision' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        header('Content-Type: application/json; charset=utf-8');
-        $vid = (int)($_POST['versi_id'] ?? 0);
-        $cat = trim((string)($_POST['catatan_approval'] ?? ''));
-        if ($vid <= 0) { echo json_encode(['success'=>false]); exit; }
-        $v = sirey_fetch(sirey_query('SELECT * FROM pengumpulan_versi_rayhanRP WHERE versi_id=?','i',$vid));
-        if (!$v) { echo json_encode(['success'=>false,'message'=>'Versi tidak ditemukan']); exit; }
-        $pid = (int)$v['pengumpulan_id'];
-        sirey_execute('UPDATE pengumpulan_versi_rayhanRP SET status_approval="disetujui",disetujui_oleh=?,catatan_approval=?,diubah_pada=NOW() WHERE versi_id=?','isi',$guru_id,$cat,$vid);
-        sirey_execute("UPDATE pengumpulan_rayhanRP SET teks_jawaban=?,file_path=?,status='graded',diubah_pada=NOW() WHERE pengumpulan_id=?",'ssi',$v['teks_jawaban'],$v['file_path'],$pid);
-        auditLog($guru_id,'REVISI_APPROVED','pengumpulan_versi',$vid,['pid'=>$pid]);
-        notifySiswaRevisiApproved($pid,(int)$v['nomor_versi'],$guru_id,$cat);
-        echo json_encode(['success'=>true,'message'=>'Revisi disetujui']);
-        exit;
-    }
-
-    if ($aksi_ajax === 'reject_revision' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        header('Content-Type: application/json; charset=utf-8');
-        $vid = (int)($_POST['versi_id'] ?? 0);
-        $cat = trim((string)($_POST['catatan_rejection'] ?? ''));
-        if ($vid <= 0 || $cat === '') { echo json_encode(['success'=>false,'message'=>'Catatan wajib diisi']); exit; }
-        $v = sirey_fetch(sirey_query('SELECT pengumpulan_id,nomor_versi FROM pengumpulan_versi_rayhanRP WHERE versi_id=?','i',$vid));
-        if (!$v) { echo json_encode(['success'=>false]); exit; }
-        sirey_execute('UPDATE pengumpulan_versi_rayhanRP SET status_approval="ditolak",disetujui_oleh=?,catatan_approval=?,diubah_pada=NOW() WHERE versi_id=?','isi',$guru_id,$cat,$vid);
-        auditLog($guru_id,'REVISI_REJECTED','pengumpulan_versi',$vid,['catatan'=>$cat]);
-        notifySiswaRevisiRejected((int)$v['pengumpulan_id'],(int)$v['nomor_versi'],$guru_id,$cat);
-        echo json_encode(['success'=>true,'message'=>'Revisi ditolak']);
         exit;
     }
 
@@ -186,21 +130,6 @@ $daftar_tugas = sirey_fetchAll(sirey_query(
 $total_belum   = (int)array_sum(array_column($daftar_tugas,'belum_dinilai'));
 $total_sudah   = (int)array_sum(array_column($daftar_tugas,'sudah_dinilai'));
 $total_tugas   = count($daftar_tugas);
-
-// Revisi pending (guru)
-$pending_revisi = [];
-if ($role_now === 'guru') {
-    $pending_revisi = sirey_fetchAll(sirey_query(
-        'SELECT pv.versi_id,pv.pengumpulan_id,pv.nomor_versi,pv.dibuat_pada,
-                p.tugas_id,t.judul AS tugas_judul,a.nama_lengkap AS siswa_nama
-         FROM pengumpulan_versi_rayhanRP pv
-         INNER JOIN pengumpulan_rayhanRP p ON pv.pengumpulan_id=p.pengumpulan_id
-         INNER JOIN tugas_rayhanRP t ON p.tugas_id=t.tugas_id
-         INNER JOIN akun_rayhanRP a ON p.akun_id=a.akun_id
-         WHERE pv.status_approval="pending" AND pv.versi_tipe="revisi" AND t.pembuat_id=?
-         ORDER BY pv.dibuat_pada ASC LIMIT 20','i',$id_guru
-    ));
-}
 ?>
 
 <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -209,38 +138,6 @@ if ($role_now === 'guru') {
     <p>Berikan nilai, catatan, dan feedback untuk setiap pengumpulan murid.</p>
   </div>
 </div>
-
-<!-- Revisi pending -->
-<?php if (!empty($pending_revisi)): ?>
-  <div class="alert alert-warning mb-3 p-0 overflow-hidden">
-    <div class="px-4 py-3 d-flex align-items-center gap-2 border-bottom" style="background:#fef9c3;">
-      <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
-      <strong>Ada <?php echo count($pending_revisi); ?> revisi menunggu persetujuan</strong>
-    </div>
-    <div class="p-3">
-      <div class="row g-2">
-        <?php foreach ($pending_revisi as $rv): ?>
-          <div class="col-md-6">
-            <div class="d-flex align-items-center justify-content-between bg-white border rounded p-3">
-              <div>
-                <div class="fw-600" style="font-size:13px;"><?php echo htmlspecialchars($rv['siswa_nama']); ?></div>
-                <div class="text-muted" style="font-size:12px;"><?php echo htmlspecialchars($rv['tugas_judul']); ?> (v<?php echo (int)$rv['nomor_versi']; ?>)</div>
-              </div>
-              <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-success" onclick="approveRevisi(<?php echo (int)$rv['versi_id']; ?>)">
-                  <i class="bi bi-check-lg"></i> Setujui
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="rejectRevisi(<?php echo (int)$rv['versi_id']; ?>)">
-                  <i class="bi bi-x-lg"></i> Tolak
-                </button>
-              </div>
-            </div>
-          </div>
-        <?php endforeach; ?>
-      </div>
-    </div>
-  </div>
-<?php endif; ?>
 
 <!-- Statistik -->
 <div class="row g-3 mb-4">
@@ -391,51 +288,7 @@ if ($role_now === 'guru') {
   </div>
 </div>
 
-<!-- ── MODAL APPROVE REVISI ── -->
-<div class="modal fade" id="modalApprove" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-check-circle text-success me-2"></i>Setujui Revisi</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="approve_vid">
-        <label class="form-label">Catatan (opsional)</label>
-        <textarea id="approve_catatan" class="form-control" rows="3" placeholder="Tambahkan catatan untuk siswa…"></textarea>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="button" class="btn btn-success" onclick="submitApprove()">
-          <i class="bi bi-check-lg me-1"></i>Setujui
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- ── MODAL REJECT REVISI ── -->
-<div class="modal fade" id="modalReject" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-x-circle text-danger me-2"></i>Tolak Revisi</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="reject_vid">
-        <label class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
-        <textarea id="reject_catatan" class="form-control" rows="3" placeholder="Jelaskan alasan penolakan…" required></textarea>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="button" class="btn btn-danger" onclick="submitReject()">
-          <i class="bi bi-x-lg me-1"></i>Tolak
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <style>
 .fw-600 { font-weight: 600; }
@@ -497,7 +350,7 @@ function renderPenilaian(tugas, rows, poinMax) {
       const stBadge = r.status==='dikumpulkan'?'bg-success':(r.status==='terlambat'?'bg-warning text-dark':(r.status==='graded'?'bg-info text-dark':'bg-danger'));
       const nilaiVal = r.nilai !== null ? r.nilai : '';
       const catatanVal = r.catatan_guru || '';
-      const statusLulus = r.status_lulus || 'lulus';
+      const statusLulus = r.status_lulus || '';
       const pct = nilaiVal !== '' ? Math.round(nilaiVal / poinMax * 100) : 0;
       const barCol = pct >= 70 ? '#059669' : (pct >= 50 ? '#d97706' : '#dc2626');
 
@@ -519,6 +372,7 @@ function renderPenilaian(tugas, rows, poinMax) {
                  oninput="updateBar(${r.pengumpulan_id}, this.value, ${poinMax})">
           <div class="nilai-bar"><div class="nilai-bar-fill" id="bar${r.pengumpulan_id}" style="width:${pct}%;background:${barCol};"></div></div>
           <select id="lulus${r.pengumpulan_id}" class="form-select form-select-sm mt-1">
+            <option value="">⏳ (Belum Dinilai)</option>
             <option value="lulus" ${statusLulus==='lulus'?'selected':''}>✅ Lulus</option>
             <option value="tidak_lulus" ${statusLulus==='tidak_lulus'?'selected':''}>❌ Tidak Lulus</option>
             <option value="revisi" ${statusLulus==='revisi'?'selected':''}>✏️ Revisi</option>
@@ -564,11 +418,12 @@ function simpanSatu(pid) {
   const catatan = document.getElementById('catatan'+pid)?.value;
   const notif   = document.getElementById('notif'+pid);
   if (nilai === undefined || nilai === '') { if(notif) notif.textContent='⚠ Isi nilai'; return; }
+  if (!lulus) { if(notif) notif.textContent='⚠ Pilih status'; return; }
   if(notif) notif.textContent = '⏳…';
   const fd = new FormData();
   fd.append('pengumpulan_id', pid);
   fd.append('nilai', nilai);
-  fd.append('status_lulus', lulus || 'lulus');
+  fd.append('status_lulus', lulus);
   fd.append('catatan_guru', catatan || '');
   fetch('./penilaian.php?action=simpan_nilai', { method:'POST', body:fd })
     .then(r => r.json())
@@ -585,9 +440,11 @@ function simpanSemua() {
   inputs.forEach(inp => {
     const pid = inp.id.replace('nilai','');
     if (!inp.value) return;
-    items.push({ pid, nilai:inp.value, lulus:document.getElementById('lulus'+pid)?.value||'lulus', catatan:document.getElementById('catatan'+pid)?.value||'' });
+    const statusSelect = document.getElementById('lulus'+pid);
+    if (!statusSelect?.value) return;
+    items.push({ pid, nilai:inp.value, lulus:statusSelect.value, catatan:document.getElementById('catatan'+pid)?.value||'' });
   });
-  if (!items.length) { Swal.fire({ icon:'warning', title:'Isi minimal satu nilai' }); return; }
+  if (!items.length) { Swal.fire({ icon:'warning', title:'Isi minimal satu nilai dan pilih status untuk setiap siswa' }); return; }
   Swal.fire({ title:`Simpan ${items.length} penilaian?`, icon:'question', showCancelButton:true, confirmButtonText:'Ya, Simpan', cancelButtonText:'Batal' })
     .then(async r => {
       if (!r.isConfirmed) return;
@@ -613,45 +470,9 @@ function lihatTeks(teks, nama) {
   new bootstrap.Modal(document.getElementById('modalTeks')).show();
 }
 
-function approveRevisi(vid) {
-  document.getElementById('approve_vid').value    = vid;
-  document.getElementById('approve_catatan').value = '';
-  new bootstrap.Modal(document.getElementById('modalApprove')).show();
-}
-function rejectRevisi(vid) {
-  document.getElementById('reject_vid').value    = vid;
-  document.getElementById('reject_catatan').value = '';
-  new bootstrap.Modal(document.getElementById('modalReject')).show();
-}
-function submitApprove() {
-  const vid = document.getElementById('approve_vid').value;
-  const cat = document.getElementById('approve_catatan').value;
-  const fd = new FormData(); fd.append('versi_id', vid); fd.append('catatan_approval', cat);
-  fetch('./penilaian.php?action=approve_revision', { method:'POST', body:fd })
-    .then(r => r.json())
-    .then(d => {
-      bootstrap.Modal.getInstance(document.getElementById('modalApprove'))?.hide();
-      if (d.success) { Swal.fire({ icon:'success', title:d.message, timer:1500, showConfirmButton:false }).then(()=>location.reload()); }
-      else Swal.fire({ icon:'error', title:d.message });
-    });
-}
-function submitReject() {
-  const vid = document.getElementById('reject_vid').value;
-  const cat = document.getElementById('reject_catatan').value.trim();
-  if (!cat) { Swal.fire({ icon:'warning', title:'Alasan penolakan wajib diisi!' }); return; }
-  const fd = new FormData(); fd.append('versi_id', vid); fd.append('catatan_rejection', cat);
-  fetch('./penilaian.php?action=reject_revision', { method:'POST', body:fd })
-    .then(r => r.json())
-    .then(d => {
-      bootstrap.Modal.getInstance(document.getElementById('modalReject'))?.hide();
-      if (d.success) { Swal.fire({ icon:'success', title:d.message, timer:1500, showConfirmButton:false }).then(()=>location.reload()); }
-      else Swal.fire({ icon:'error', title:d.message });
-    });
-}
-
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['modalPenilaian','modalTeks','modalApprove','modalReject'].forEach(id => {
+    ['modalPenilaian','modalTeks'].forEach(id => {
       const el = document.getElementById(id);
       if (el) bootstrap.Modal.getInstance(el)?.hide();
     });

@@ -239,6 +239,71 @@ function deleteMessage(int $chat, int $messageId): bool
 }
 
 /**
+ * Kirim file/foto jawaban siswa ke guru saat penilaian.
+ * Deteksi tipe file dan kirim dengan caption informatif.
+ * 
+ * @param int $chatId Chat ID guru
+ * @param array $detail Array detail pengumpulan (dari getPengumpulanDetail)
+ * @return bool true jika berhasil dikirim
+ */
+function sendSubmissionFileToGuru(int $chatId, array $detail): bool
+{
+    // Jika tidak ada file, hanya teks - tidak perlu kirim
+    if (empty($detail['file_path'])) {
+        return true; // Bukan error, hanya tidak ada file
+    }
+
+    $filePath = (string) $detail['file_path'];
+    
+    // Convert relative path ke absolute path
+    // Path dari DB bisa relative seperti "uploads/submissions/2026/04/sub_123.jpg"
+    if (!str_starts_with($filePath, '/')) {
+        // Path relative: tambahkan base directory
+        $filePath = __DIR__ . '/../' . $filePath;
+    }
+
+    // Normalize path
+    $filePath = realpath($filePath);
+    
+    // Pastikan file ada
+    if (!$filePath || !file_exists($filePath)) {
+        error_log("[TG] File submission tidak ditemukan: " . ($detail['file_path'] ?? 'unknown'));
+        return false;
+    }
+
+    // Validasi file dalam direktori yang diizinkan (security check)
+    $uploadsDir = realpath(__DIR__ . '/../uploads');
+    if ($uploadsDir && !str_starts_with($filePath, $uploadsDir)) {
+        error_log("[TG] File submission di luar direktori uploads: {$filePath}");
+        return false;
+    }
+
+    $fileName = $detail['file_nama_asli'] ?? basename($filePath);
+
+    // Deteksi tipe file dari extension
+    $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+    $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'bmp']);
+
+    // Format caption informatif
+    $siswa = $detail['nama_lengkap'] ?? 'Siswa';
+    $tugas = $detail['judul'] ?? 'Tugas';
+    $waktu = date('d/m/Y H:i', strtotime($detail['waktu_kumpul'] ?? 'now'));
+
+    $caption = "📎 *Jawaban Siswa*\n"
+             . "👤 {$siswa}\n"
+             . "📝 {$tugas}\n"
+             . "🕐 {$waktu}\n"
+             . "📄 {$fileName}";
+
+    // Kirim file sesuai tipe
+    if ($isImage) {
+        return sendPhoto($chatId, $filePath, $caption);
+    } else {
+        return sendDocument($chatId, $filePath, $caption);
+    }
+}
+
+/**
  * Kirim aksi "mengetik..." agar pengguna tahu bot sedang memproses.
  */
 function sendTyping(int $chat): void
@@ -286,7 +351,7 @@ function mainKeyboard(string $role): array
             break;
 
         case 'siswa':
-            $base[] = ['🔄 Kumpulkan Tugas', '📊 Lihat Penilaian'];
+            $base[] = ['🔄 Kumpulkan Tugas', '🏆 Lihat Nilai'];
             break;
     }
 
@@ -817,8 +882,8 @@ function formatJadwalHari(array $jadwal, string $hari, string $tanggal, string $
 
         $baris[] = $entry;
     }
-
-    return $header . implode("\n", $baris) . "\n_Semangat belajar hari ini!_ 💪";
+    
+    return $header . implode("\n", $baris) . "\n" . str_repeat('─', 24) . "\n_Semangat belajar hari ini!_ 💪";
 }
 
 
@@ -979,12 +1044,6 @@ function getTugasRevisiPending(int $akunId): array
          LEFT JOIN grup_rayhanRP g ON t.grup_id = g.grup_id
          WHERE p.akun_id = ?
            AND pn.status_lulus = "revisi"
-           AND NOT EXISTS (
-               SELECT 1 FROM pengumpulan_versi_rayhanRP pv
-               WHERE pv.pengumpulan_id = p.pengumpulan_id
-                 AND pv.versi_tipe = "revisi"
-                 AND pv.status_approval IN ("pending", "disetujui")
-           )
          ORDER BY t.tenggat ASC',
         'i',
         $akunId
@@ -1141,7 +1200,8 @@ function simpanPengumpulanTugas(
     int     $akunId,
     int     $tugasId,
     ?string $teksJawaban = null,
-    ?string $filePath    = null
+    ?string $filePath    = null,
+    ?string $fileNamaAsli  = null
 ): bool {
     $tugas = getTugasDetail($tugasId);
     if (!$tugas) return false;
@@ -1149,19 +1209,64 @@ function simpanPengumpulanTugas(
     // Tepat waktu atau terlambat?
     $status = time() <= strtotime((string) $tugas['tenggat']) ? 'dikumpulkan' : 'terlambat';
 
-    $hasil = sirey_execute(
-        'INSERT INTO pengumpulan_rayhanRP
-         (akun_id, tugas_id, teks_jawaban, file_path, status, waktu_kumpul, via)
-         VALUES (?, ?, ?, ?, ?, NOW(), "telegram")',
-        'iisss',
-        $akunId,
-        $tugasId,
-        $teksJawaban ?? '',
-        $filePath    ?? '',
-        $status
-    );
+    // Generate nama file asli dari file path jika tidak diberikan
+    if ($filePath && !$fileNamaAsli) {
+        $fileNamaAsli = basename($filePath);
+    }
 
-    if ($hasil < 1) return false;
+    // Cek apakah sudah ada pengumpulan sebelumnya
+    $existing = sirey_fetch(sirey_query(
+        'SELECT pengumpulan_id FROM pengumpulan_rayhanRP WHERE akun_id = ? AND tugas_id = ?',
+        'ii',
+        $akunId,
+        $tugasId
+    ));
+
+    if ($existing) {
+        // UPDATE pengumpulan yang ada (untuk revisi/resubmit)
+        $hasil = sirey_execute(
+            'UPDATE pengumpulan_rayhanRP 
+             SET teks_jawaban = ?, file_path = ?, file_nama_asli = ?, status = ?, waktu_kumpul = NOW()
+             WHERE akun_id = ? AND tugas_id = ?',
+            'ssssii',
+            $teksJawaban ?? '',
+            $filePath ?? '',
+            $fileNamaAsli ?? '',
+            $status,
+            $akunId,
+            $tugasId
+        );
+
+        // UPDATE bisa return 0 jika data tidak berubah, tapi query tetap berhasil
+        // Hanya return false jika query error (false bukan 0)
+        if ($hasil === false) {
+            error_log("[KUMPUL] UPDATE query error untuk akun_id=$akunId, tugas_id=$tugasId");
+            return false;
+        }
+
+        error_log("[KUMPUL] UPDATE berhasil: akun_id=$akunId, tugas_id=$tugasId, affected_rows=$hasil");
+    } else {
+        // INSERT pengumpulan baru (pertama kali)
+        $hasil = sirey_execute(
+            'INSERT INTO pengumpulan_rayhanRP
+             (akun_id, tugas_id, teks_jawaban, file_path, file_nama_asli, status, waktu_kumpul, via)
+             VALUES (?, ?, ?, ?, ?, ?, NOW(), "telegram")',
+            'iissss',
+            $akunId,
+            $tugasId,
+            $teksJawaban ?? '',
+            $filePath    ?? '',
+            $fileNamaAsli  ?? '',
+            $status
+        );
+
+        if ($hasil < 1) {
+            error_log("[KUMPUL] INSERT gagal untuk akun_id=$akunId, tugas_id=$tugasId");
+            return false;
+        }
+
+        error_log("[KUMPUL] INSERT berhasil: akun_id=$akunId, tugas_id=$tugasId");
+    }
 
     // Notifikasi ke guru pembuat tugas
     $guru = sirey_fetch(sirey_query(
@@ -1225,7 +1330,7 @@ function simpanRevisiTugas(
         'INSERT INTO pengumpulan_versi_rayhanRP
          (pengumpulan_id, nomor_versi, teks_jawaban, file_path, file_nama_asli,
           versi_tipe, disubmit_oleh, status_approval, dibuat_pada)
-         VALUES (?, ?, ?, ?, ?, "revisi", ?, "pending", NOW())',
+         VALUES (?, ?, ?, ?, ?, "revisi", ?, "disetujui", NOW())',
         'iisssi',
         $pengumpulanId,
         $nomorVersi,
@@ -1236,6 +1341,23 @@ function simpanRevisiTugas(
     );
 
     if ($hasil < 1) return false;
+
+    // Update pengumpulan_rayhanRP dengan data revisi terbaru
+    // Sehingga dashboard penilaian menampilkan versi terbaru
+    sirey_execute(
+        'UPDATE pengumpulan_rayhanRP 
+         SET teks_jawaban = ?, file_path = ?, file_nama_asli = ?, waktu_kumpul = NOW()
+         WHERE pengumpulan_id = ?',
+        'sssi',
+        $teksJawaban ?? '',
+        $filePath ?? '',
+        $filePath ? basename($filePath) : '',
+        $pengumpulanId
+    );
+
+    // CATATAN: Jangan auto-approve revisi ke "lulus"!
+    // Guru harus re-evaluate revisi dan memilih status sendiri
+    // Penilaian lama tetap berlaku sampai guru memilih status baru
 
     // Notifikasi ke guru
     $tugas = sirey_fetch(sirey_query(
@@ -1272,7 +1394,7 @@ function simpanRevisiTugas(
 // ============================================================
 
 /**
- * Ambil nilai tugas siswa.
+ * Ambil nilai tugas siswa (sudah dinilai).
  */
 function getNilaiSiswa(int $akunId): array
 {
@@ -1294,60 +1416,104 @@ function getNilaiSiswa(int $akunId): array
 }
 
 /**
- * Format daftar nilai menjadi teks Telegram.
+ * Ambil tugas yang sudah dikumpulkan tapi belum dinilai.
  */
-function formatNilaiSiswa(array $nilaiList): string
+function getTugasYangBelumDinilai(int $akunId): array
 {
-    if (empty($nilaiList)) {
-        return "📊 *Penilaian Tugas*\n\n_(Belum ada nilai)_";
+    return sirey_fetchAll(sirey_query(
+        'SELECT t.judul, mp.nama AS matpel, g.nama_grup, p.waktu_kumpul, t.tenggat, t.poin_maksimal
+         FROM pengumpulan_rayhanRP p
+         INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id
+         LEFT JOIN mata_pelajaran_rayhanRP mp ON t.matpel_id = mp.matpel_id
+         LEFT JOIN grup_rayhanRP g ON t.grup_id = g.grup_id
+         LEFT JOIN penilaian_rayhanRP pn ON pn.pengumpulan_id = p.pengumpulan_id
+         WHERE p.akun_id = ? AND pn.penilaian_id IS NULL
+         ORDER BY p.waktu_kumpul DESC
+         LIMIT 20',
+        'i',
+        $akunId
+    ));
+}
+
+/**
+ * Format daftar nilai dan tugas belum dinilai menjadi teks Telegram.
+ */
+function formatNilaiSiswa(array $nilaiList, array $belumDinilaiList = []): string
+{
+    if (empty($nilaiList) && empty($belumDinilaiList)) {
+        return "📊 *Nilai Tugas*\n\n_(Belum ada tugas yang dikumpulkan)_";
     }
 
-    $pesan = "📊 *Penilaian Tugas*\n";
+    $pesan = "📊 *Nilai Tugas*\n";
     $pesan .= str_repeat('─', 24) . "\n\n";
 
-    foreach ($nilaiList as $row) {
-        $persen = (float) ($row['persentase'] ?? 0);
-        $emoji  = match (true) {
-            $persen >= 90 => '🏆',
-            $persen >= 80 => '⭐',
-            $persen >= 70 => '✅',
-            $persen >= 60 => '⚠️',
-            default       => '❌',
-        };
+    // ─── SUDAH DINILAI ───
+    if (!empty($nilaiList)) {
+        $pesan .= "✅ *SUDAH DINILAI* (" . count($nilaiList) . ")\n";
+        $pesan .= str_repeat('─', 16) . "\n\n";
 
-        $statusLabel = match ($row['status_lulus'] ?? 'lulus') {
-            'lulus'       => 'Lulus',
-            'tidak_lulus' => 'Tidak Lulus',
-            'revisi'      => 'Revisi',
-            default       => '-',
-        };
+        foreach ($nilaiList as $row) {
+            $persen = (float) ($row['persentase'] ?? 0);
+            $emoji  = match (true) {
+                $persen >= 90 => '🏆',
+                $persen >= 80 => '⭐',
+                $persen >= 70 => '✅',
+                $persen >= 60 => '⚠️',
+                default       => '❌',
+            };
 
-        $nilaiStr = is_numeric($row['nilai'])
-            ? (floor((float)$row['nilai']) == (float)$row['nilai']
-                ? (string)(int)$row['nilai']
-                : number_format((float)$row['nilai'], 1))
-            : '-';
+            $statusLabel = match ($row['status_lulus'] ?? '') {
+                'lulus'       => 'Lulus',
+                'tidak_lulus' => 'Tidak Lulus',
+                'revisi'      => 'Revisi',
+                default       => '-',
+            };
 
-        $pesan .= "{$emoji} *{$row['judul']}*\n";
-        $pesan .= "   📚 {$row['matpel']}";
-        if (!empty($row['nama_grup'])) {
-            $pesan .= " | 🎓 {$row['nama_grup']}";
+            $nilaiStr = is_numeric($row['nilai'])
+                ? (floor((float)$row['nilai']) == (float)$row['nilai']
+                    ? (string)(int)$row['nilai']
+                    : number_format((float)$row['nilai'], 1))
+                : '-';
+
+            $pesan .= "{$emoji} *{$row['judul']}*\n";
+            $pesan .= "   📚 {$row['matpel']}";
+            if (!empty($row['nama_grup'])) {
+                $pesan .= " | 🎓 {$row['nama_grup']}";
+            }
+            $pesan .= "\n";
+            $pesan .= "   💯 *{$nilaiStr}/{$row['poin_maksimal']}* ({$persen}%) — {$statusLabel}\n";
+
+            if (!empty($row['catatan_guru'])) {
+                $pesan .= "   💬 _{$row['catatan_guru']}_\n";
+            }
+
+            $pesan .= "\n";
         }
-        $pesan .= "\n";
-        $pesan .= "   💯 *{$nilaiStr}/{$row['poin_maksimal']}* ({$persen}%) — {$statusLabel}\n";
 
-        if (!empty($row['catatan_guru'])) {
-            $pesan .= "   💬 _{$row['catatan_guru']}_\n";
-        }
-
-        $pesan .= "\n";
+        // Rata-rata nilai
+        $totalNilai  = array_sum(array_column($nilaiList, 'nilai'));
+        $rataRata    = count($nilaiList) > 0 ? round($totalNilai / count($nilaiList), 1) : 0;
+        $pesan      .= str_repeat('─', 24) . "\n";
+        $pesan      .= "📈 Rata-rata: *{$rataRata}*\n\n";
     }
 
-    // Rata-rata nilai
-    $totalNilai  = array_sum(array_column($nilaiList, 'nilai'));
-    $rataRata    = count($nilaiList) > 0 ? round($totalNilai / count($nilaiList), 1) : 0;
-    $pesan      .= str_repeat('─', 24) . "\n";
-    $pesan      .= "📈 Rata-rata: *{$rataRata}*";
+    // ─── BELUM DINILAI ───
+    if (!empty($belumDinilaiList)) {
+        $pesan .= "⏳ *BELUM DINILAI* (" . count($belumDinilaiList) . ")\n";
+        $pesan .= str_repeat('─', 16) . "\n\n";
+
+        foreach ($belumDinilaiList as $row) {
+            $tglKumpul = date('d/m H:i', strtotime((string) $row['waktu_kumpul']));
+            $pesan .= "📝 *{$row['judul']}*\n";
+            $pesan .= "   📚 {$row['matpel']}";
+            if (!empty($row['nama_grup'])) {
+                $pesan .= " | 🎓 {$row['nama_grup']}";
+            }
+            $pesan .= "\n";
+            $pesan .= "   ⏰ Dikumpulkan: {$tglKumpul}\n";
+            $pesan .= "   💯 Nilai Max: {$row['poin_maksimal']}\n\n";
+        }
+    }
 
     return $pesan;
 }
@@ -1655,19 +1821,26 @@ function savePenilaian(
 function downloadTelegramFile(string $fileId, string $fileType, int $akunId): ?string
 {
     $token = getBotToken();
-    if (!$token) return null;
+    if (!$token) {
+        error_log("[DOWNLOAD] Bot token tidak ditemukan");
+        return null;
+    }
 
     // Langkah 1: Dapatkan path file dari Telegram
+    error_log("[DOWNLOAD] Meminta info file dari Telegram (file_id: {$fileId})");
     $infoResponse = telegramRequest('getFile', ['file_id' => $fileId]);
     if (!$infoResponse || empty($infoResponse['result']['file_path'])) {
         error_log("[DOWNLOAD] Gagal getFile untuk file_id: {$fileId}");
+        error_log("[DOWNLOAD] Response: " . json_encode($infoResponse));
         return null;
     }
 
     $telegramFilePath = $infoResponse['result']['file_path'];
     $fileUrl          = "https://api.telegram.org/file/bot{$token}/{$telegramFilePath}";
+    error_log("[DOWNLOAD] Telegram file path: {$telegramFilePath}");
 
     // Langkah 2: Unduh konten file
+    error_log("[DOWNLOAD] Mendownload file dari: {$fileUrl}");
     $ch = curl_init($fileUrl);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -1692,6 +1865,8 @@ function downloadTelegramFile(string $fileId, string $fileType, int $akunId): ?s
         return null;
     }
 
+    error_log("[DOWNLOAD] File berhasil didownload, size: " . strlen($fileContent) . " bytes");
+
     // Langkah 3: Tentukan ekstensi file
     $ext = pathinfo(basename($telegramFilePath), PATHINFO_EXTENSION);
     if (empty($ext)) {
@@ -1704,6 +1879,9 @@ function downloadTelegramFile(string $fileId, string $fileType, int $akunId): ?s
             str_starts_with($fileContent, 'PK')               => 'zip',
             default                                            => 'bin',
         };
+        error_log("[DOWNLOAD] Extension terdeteksi dari magic bytes: {$ext}");
+    } else {
+        error_log("[DOWNLOAD] Extension dari filename: {$ext}");
     }
 
     // Langkah 4: Simpan ke direktori uploads
@@ -1712,6 +1890,7 @@ function downloadTelegramFile(string $fileId, string $fileType, int $akunId): ?s
     $dir     = __DIR__ . "/../uploads/submissions/{$year}/{$month}";
 
     if (!is_dir($dir)) {
+        error_log("[DOWNLOAD] Membuat direktori: {$dir}");
         mkdir($dir, 0755, true);
     }
 
@@ -1725,6 +1904,7 @@ function downloadTelegramFile(string $fileId, string $fileType, int $akunId): ?s
     }
 
     error_log("[DOWNLOAD] File tersimpan: {$relativePath}");
+    error_log("[DOWNLOAD] Full path: {$fullPath}");
     return $relativePath;
 }
 
@@ -1795,7 +1975,7 @@ function formatFormNilai(array $detail): string
     }
 
     if ($detail['file_nama_asli']) {
-        $pesan .= "📎 *File:* {$detail['file_nama_asli']}\n\n";
+        $pesan .= "📎 *File:* {$detail['file_nama_asli']} _(lihat di pesan atas)_\n\n";
     }
 
     if ($detail['nilai'] !== null) {

@@ -456,6 +456,13 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             if ($fileId !== '') {
                 sendMsg($chatId, "⏳ Mengunggah file, harap tunggu...");
                 $filePath = downloadTelegramFile($fileId, $fileType, $uid);
+                
+                // Log untuk debugging
+                if ($filePath === null) {
+                    error_log("[UPLOAD] File download gagal untuk file_id: {$fileId}");
+                } else {
+                    error_log("[UPLOAD] File berhasil didownload: {$filePath}");
+                }
             }
 
             if ($filePath === null) {
@@ -469,19 +476,21 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
             $tipeKumpul = (string) ($state['tipe_kumpul'] ?? 'baru');
             $tugas      = (array)  ($state['tugas'] ?? []);
+            $judulTugas = (string) ($tugas['judul'] ?? '');
+            $namaFile   = (string) ($state['file_nama'] ?? basename($filePath));
 
-            $ok = $tipeKumpul === 'revisi'
-                ? simpanRevisiTugas($uid, (int) $state['tugas_id'], null, $filePath)
-                : simpanPengumpulanTugas($uid, (int) $state['tugas_id'], null, $filePath);
+            if ($tipeKumpul === 'revisi') {
+                $ok = simpanRevisiTugas($uid, (int) $state['tugas_id'], null, $filePath);
+            } else {
+                // Pass file_nama_asli saat insert
+                $ok = simpanPengumpulanTugas($uid, (int) $state['tugas_id'], null, $filePath, $namaFile);
+            }
 
             _resetKeMenu($chatId, $user);
 
-            $judulTugas = (string) ($tugas['judul'] ?? '');
-            $namaFile   = (string) ($state['file_nama'] ?? '');
-
             if ($ok) {
                 $pesanOk = $tipeKumpul === 'revisi'
-                    ? "✅ *Revisi berhasil dikirim!*\n\n📝 {$judulTugas}\n📎 {$namaFile}\n\nGuru akan meninjau revisi Anda."
+                    ? "✅ *Revisi berhasil dikirim!*\n\n📝 {$judulTugas}\n📎 {$namaFile}\n\n✨ Revisi Anda diterima dan diproses!"
                     : "✅ *Tugas berhasil dikumpulkan!*\n\n📝 {$judulTugas}\n📎 {$namaFile}\n\n_Guru akan menilai tugas Anda._";
                 sendMsg($chatId, $pesanOk, mainKeyboard($role));
             } else {
@@ -507,7 +516,7 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
             $ok = $tipeKumpul === 'revisi'
                 ? simpanRevisiTugas($uid, (int) $state['tugas_id'], $state['teks_jawaban'] ?? null, null)
-                : simpanPengumpulanTugas($uid, (int) $state['tugas_id'], $state['teks_jawaban'] ?? null, null);
+                : simpanPengumpulanTugas($uid, (int) $state['tugas_id'], $state['teks_jawaban'] ?? null, null, null);
 
             _resetKeMenu($chatId, $user);
 
@@ -515,7 +524,7 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
             if ($ok) {
                 $pesanOk = $tipeKumpul === 'revisi'
-                    ? "✅ *Revisi berhasil dikirim!*\n\n📝 {$judulTugas}\n\nGuru akan meninjau revisi Anda."
+                    ? "✅ *Revisi berhasil dikirim!*\n\n📝 {$judulTugas}\n\n✨ Revisi Anda diterima dan diproses!"
                     : "✅ *Tugas berhasil dikumpulkan!*\n\n📝 {$judulTugas}\n\n_Guru akan menilai tugas Anda._";
                 sendMsg($chatId, $pesanOk, mainKeyboard($role));
             } else {
@@ -669,6 +678,27 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             return true;
         }
 
+        // Debug: log file_path untuk troubleshooting
+        $filePath = (string) ($detail['file_path'] ?? '');
+        if ($filePath !== '') {
+            error_log("[PENILAIAN] File path ditemukan: {$filePath}");
+        }
+
+        // Kirim file/foto jawaban jika ada
+        if ($filePath !== '') {
+            sendTyping($chatId);
+            $sent = sendSubmissionFileToGuru($chatId, $detail);
+            if ($sent) {
+                error_log("[PENILAIAN] File berhasil dikirim ke guru");
+                usleep(500000); // Delay 0.5 detik agar file terkirim dulu
+            } else {
+                error_log("[PENILAIAN] Gagal mengirim file");
+                // Lanjut ke form nilai meski gagal kirim file
+            }
+        } else {
+            error_log("[PENILAIAN] Tidak ada file (hanya teks atau belum ada file)");
+        }
+
         $pesan = formatFormNilai($detail);
 
         setState($chatId, array_merge($state, [
@@ -729,15 +759,71 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
         $detail  = (array)  ($state['pengumpulan_detail'] ?? []);
         $nilai   = (float)  ($state['nilai_input'] ?? 0);
 
-        $pesan = formatKonfirmasiNilai($detail, $nilai, $catatan);
-
         setState($chatId, array_merge($state, [
-            'step'         => 'nilai_konfirmasi',
+            'step'          => 'nilai_pilih_status',
             'catatan_input' => $catatan,
-            'user_cache'   => _buildUserCache($user),
+            'user_cache'    => _buildUserCache($user),
         ]));
 
-        sendMsg($chatId, $pesan, [['✅ Simpan', '✏️ Ubah Nilai', '❌ Batal']]);
+        $pesan = "📊 *Pilih Status Penilaian*\n\n"
+               . "Nilai: *{$nilai}/{$detail['poin_maksimal']}*\n\n"
+               . "Tentukan status tugas siswa:";
+
+        sendMsg($chatId, $pesan, [
+            ['✅ Lulus', '✏️ Revisi'],
+            ['❌ Ditolak', '🔙 Kembali ke Menu']
+        ]);
+        return true;
+    }
+
+    // ── NILAI TUGAS: PILIH STATUS ────────────────────────────────
+    if ($step === 'nilai_pilih_status') {
+        if ($text === '🔙 Kembali ke Menu') {
+            return _kembaliMenu($chatId, $user);
+        }
+
+        $statusMap = [
+            '✅ Lulus'    => 'lulus',
+            '✏️ Revisi'   => 'revisi',
+            '❌ Ditolak'  => 'tidak_lulus',
+        ];
+
+        if (!isset($statusMap[$text])) {
+            sendMsg($chatId, "❌ Pilih status dari tombol yang tersedia.");
+            return true;
+        }
+
+        $status = $statusMap[$text];
+        $statusLabel = [
+            'lulus'       => '✅ Lulus',
+            'revisi'      => '✏️ Revisi',
+            'tidak_lulus' => '❌ Ditolak',
+        ][$status];
+
+        $detail  = (array) ($state['pengumpulan_detail'] ?? []);
+        $nilai   = (float) ($state['nilai_input'] ?? 0);
+        $catatan = $state['catatan_input'] ?? null;
+
+        $pesan = "✅ *Konfirmasi Penilaian*\n\n"
+               . "👤 {$detail['nama_lengkap']}\n"
+               . "📝 {$detail['judul']}\n"
+               . "💯 Nilai: *{$nilai}/{$detail['poin_maksimal']}*\n"
+               . "📊 Status: *{$statusLabel}*\n";
+
+        if ($catatan) {
+            $pesan .= "💬 Catatan: _{$catatan}_\n";
+        }
+
+        $pesan .= "\nSimpan penilaian ini?";
+
+        setState($chatId, array_merge($state, [
+            'step'          => 'nilai_konfirmasi',
+            'status_input'  => $status,
+            'catatan_input' => $catatan,
+            'user_cache'    => _buildUserCache($user),
+        ]));
+
+        sendMsg($chatId, $pesan, [['✅ Simpan', '✏️ Ubah', '❌ Batal']]);
         return true;
     }
 
@@ -747,24 +833,36 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             return _kembaliMenu($chatId, $user);
         }
 
-        if ($text === '✏️ Ubah Nilai') {
-            // Kembali ke input nilai
-            $detail = (array) ($state['pengumpulan_detail'] ?? []);
+        if ($text === '✏️ Ubah') {
+            // Kembali ke pilih status
             setState($chatId, array_merge($state, [
-                'step'       => 'nilai_input_nilai',
+                'step'       => 'nilai_pilih_status',
                 'user_cache' => _buildUserCache($user),
             ]));
-            sendMsg($chatId, formatFormNilai($detail), [['🔙 Kembali ke Menu']]);
+            
+            $detail  = (array) ($state['pengumpulan_detail'] ?? []);
+            $nilai   = (float) ($state['nilai_input'] ?? 0);
+            
+            $pesan = "📊 *Pilih Status Penilaian*\n\n"
+                   . "Nilai: *{$nilai}/{$detail['poin_maksimal']}*\n\n"
+                   . "Tentukan status tugas siswa:";
+
+            sendMsg($chatId, $pesan, [
+                ['✅ Lulus', '✏️ Revisi'],
+                ['❌ Ditolak', '🔙 Kembali ke Menu']
+            ]);
             return true;
         }
 
         if ($text === '✅ Simpan') {
+            $status = (string) ($state['status_input'] ?? 'lulus');
+            
             $hasil = savePenilaian(
                 (int)    $state['pengumpulan_id'],
                 $uid,
                 (float)  $state['nilai_input'],
                 $state['catatan_input'] ?? null,
-                'lulus'
+                $status
             );
 
             $detail = (array) ($state['pengumpulan_detail'] ?? []);
@@ -780,10 +878,17 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
                 _resetKeMenu($chatId, $user);
 
+                $statusLabel = [
+                    'lulus'       => '✅ Lulus',
+                    'revisi'      => '✏️ Revisi',
+                    'tidak_lulus' => '❌ Ditolak',
+                ][$status] ?? $status;
+
                 $pesanOk = "✅ *Penilaian Berhasil Disimpan!*\n\n"
                          . "👤 {$detail['nama_lengkap']}\n"
                          . "📝 {$detail['judul']}\n"
-                         . formatNilaiBintang((float) $state['nilai_input'], (int) $detail['poin_maksimal']);
+                         . formatNilaiBintang((float) $state['nilai_input'], (int) $detail['poin_maksimal'])
+                         . "\n📊 Status: *{$statusLabel}*";
 
                 if (!empty($state['catatan_input'])) {
                     $pesanOk .= "\n💬 _{$state['catatan_input']}_";

@@ -52,21 +52,22 @@ function handleMenu(string $text, int $chatId, array $user): bool
 
             $adaJadwal = true;
             $pesan    .= "📌 *{$hari}* ({$tglHari})\n";
-
+            $pesan   .= str_repeat('─', 16) . " \n";
             foreach ($jadwal as $j) {
                 $mulai   = substr((string) $j['jam_mulai'],   0, 5);
                 $selesai = substr((string) $j['jam_selesai'], 0, 5);
-                $pesan  .= "  🕐 {$mulai}–{$selesai} | {$j['matpel']}";
+                $pesan  .= "  🕐 {$mulai}–{$selesai}\n  📚{$j['matpel']}";
 
                 if ($role === 'siswa' && !empty($j['guru_nama'])) {
-                    $pesan .= " ({$j['guru_nama']})";
+                    $pesan .= "\n  🧑‍🏫{$j['guru_nama']}";
                 }
+
+                $pesan .= "\n" . str_repeat('─', 16) . "\n";
 
                 if ($role === 'guru' && !empty($j['nama_grup'])) {
                     $pesan .= " | 🎓 {$j['nama_grup']}";
                 }
 
-                $pesan .= "\n";
             }
 
             $pesan .= "\n";
@@ -97,8 +98,8 @@ function handleMenu(string $text, int $chatId, array $user): bool
                     default   => '📌',
                 };
 
-                $pesan .= "{$prioIcon} *{$p['judul']}*\n";
-                $pesan .= potongTeks((string) $p['isi'], 200) . "\n";
+                $pesan .= "{$prioIcon} *{$p['judul']}* |\n";
+                $pesan .= "ℹ️ " . potongTeks((string) $p['isi'], 200) . "\n";
                 $pesan .= "_— {$p['pembuat']}, {$tgl}_\n\n";
             }
         }
@@ -304,13 +305,15 @@ function handleMenu(string $text, int $chatId, array $user): bool
             return true;
         }
 
-        $pesan       = "🔄 *Kumpulkan Tugas*\n\nPilih nomor tugas:\n\n";
+        $pesan = "🔄 *Kumpulkan Tugas*\n";
+        $pesan .= str_repeat('─', 24) . "\n\n";
         $daftarGabung = [];
         $no           = 0;
 
         // Tampilkan revisi duluan (prioritas)
         if (!empty($tugasRevisi)) {
-            $pesan .= "📝 *REVISI DIMINTA:*\n\n";
+            $pesan .= "📝 *REVISI DIMINTA:*\n";
+            $pesan .= str_repeat('─', 16) . "\n";
             foreach ($tugasRevisi as $t) {
                 $no++;
                 $sisa  = sisaWaktu((string) $t['tenggat']);
@@ -331,7 +334,8 @@ function handleMenu(string $text, int $chatId, array $user): bool
         // Tampilkan tugas baru
         if (!empty($tugasBaru)) {
             if (!empty($tugasRevisi)) {
-                $pesan .= "🆕 *TUGAS BARU:*\n\n";
+                $pesan .= "🆕 *TUGAS BARU:*\n";
+                $pesan .= str_repeat('─', 16) . "\n";
             }
 
             foreach ($tugasBaru as $t) {
@@ -359,10 +363,11 @@ function handleMenu(string $text, int $chatId, array $user): bool
         return true;
     }
 
-    // ── 📊 LIHAT PENILAIAN (siswa) ───────────────────────────────
-    if ($text === '📊 Lihat Penilaian' && $role === 'siswa') {
-        $nilaiList = getNilaiSiswa($uid);
-        $pesan     = formatNilaiSiswa($nilaiList);
+    // ── 🏆 Lihat Nilai (siswa) ───────────────────────────────
+    if ($text === '🏆 Lihat Nilai' && $role === 'siswa') {
+        $nilaiList        = getNilaiSiswa($uid);
+        $belumDinilaiList = getTugasYangBelumDinilai($uid);
+        $pesan            = formatNilaiSiswa($nilaiList, $belumDinilaiList);
         sendMsg($chatId, $pesan, mainKeyboard($role));
         return true;
     }
@@ -468,8 +473,9 @@ function _menuTugasSiswa(int $chatId, int $uid, string $role): void
             $statusText = (int) $t['sudah_kumpul'] > 0 ? 'Sudah' : 'Belum';
 
             $pesan .= "*{$no}. {$t['judul']}*\n"
-                . "   📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n"
-                . "   📅 {$tgl} _({$sisa})_\n"
+                . "   📚 {$t['matpel']}\n"
+                . "   🎓 {$t['nama_grup']}\n"
+                . "   📅 {$tgl}\n   _({$sisa})_\n"
                 . "   {$status} {$statusText} dikumpulkan\n\n";
         }
 
@@ -485,8 +491,8 @@ function _menuTugasSiswa(int $chatId, int $uid, string $role): void
                 'nis_nip'      => '',
             ]),
         ]);
-        
-        $pesan .= "Ketik *nomor* tugas untuk melihat detail (contoh: *1*)";
+        $pesan .= str_repeat('─', 24) . "\n";
+        $pesan .= "_Ketik nomor tugas untuk melihat detail (contoh: 1)_";
         
         // Buat keyboard angka
         $keyboard = _buildNomorKeyboard(count($list));
