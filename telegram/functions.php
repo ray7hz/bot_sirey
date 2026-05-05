@@ -248,6 +248,7 @@ function deleteMessage(int $chat, int $messageId): bool
  */
 function sendSubmissionFileToGuru(int $chatId, array $detail): bool
 {
+
     // Jika tidak ada file, hanya teks - tidak perlu kirim
     if (empty($detail['file_path'])) {
         return true; // Bukan error, hanya tidak ada file
@@ -290,6 +291,7 @@ function sendSubmissionFileToGuru(int $chatId, array $detail): bool
     $waktu = date('d/m/Y H:i', strtotime($detail['waktu_kumpul'] ?? 'now'));
 
     $caption = "📎 *Jawaban Siswa*\n"
+                . str_repeat('─', 24) . "\n"
              . "👤 {$siswa}\n"
              . "📝 {$tugas}\n"
              . "🕐 {$waktu}\n"
@@ -329,7 +331,7 @@ function pinMessage(int $chat, int $messageId): bool
 
 
 // ============================================================
-// KEYBOARD BUILDERS
+// SEMUA KEYBOARD & FORMAT TEKS
 // ============================================================
 
 /**
@@ -355,7 +357,8 @@ function mainKeyboard(string $role): array
             break;
     }
 
-    $base[] = ['⚙️ Pengaturan', '🚪 Logout'];
+    $base[] = ['⚙️ Pengaturan','❓ Bantuan'];
+    $base[] = ['🚪 Logout'];
 
     return $base;
 }
@@ -472,7 +475,7 @@ function sisaWaktu(string $tenggat): string
 {
     $sisa = strtotime($tenggat) - time();
 
-    if ($sisa <= 0) return '⚠️ sudah lewat';
+    if ($sisa <= 0) return '⛔ sudah lewat';
     if ($sisa < 3600) return round($sisa / 60) . ' menit lagi';
     if ($sisa < 86400) return round($sisa / 3600) . ' jam lagi';
 
@@ -954,9 +957,11 @@ function simpanPengumumanGuru(array $data): bool
 
     $namaPembuat = $guru['nama_lengkap'] ?? 'Guru';
 
-    $pesan = "📢 *Pengumuman Baru*\n\n"
-           . "*{$data['judul']}*\n\n"
-           . "{$data['isi']}\n\n"
+    $pesan = "📢 *Pengumuman Baru*\n"
+           . str_repeat('─', 24) . "\n"
+           . "📌 Judul: {$data['judul']}\n"
+           . "ℹ️ Info: {$data['isi']}\n"
+           . str_repeat('─', 24) . "\n"
            . "_— {$namaPembuat}_";
 
     $terkirim = 0;
@@ -1143,10 +1148,11 @@ function simpanTugasBot(array $data): bool
     ));
 
     $tglDeadline = date('d/m/Y H:i', strtotime($data['tenggat']));
-    $pesan       = "📝 *Tugas Baru!*\n\n"
-                 . "*{$data['judul']}*\n"
-                 . ($data['deskripsi'] ? "{$data['deskripsi']}\n\n" : "\n")
-                 . "📅 Deadline: {$tglDeadline}\n\n"
+    $pesan       = "📝 *Tugas Baru!*\n" . str_repeat('─', 24) . "\n"
+                 . "📌 Judul: {$data['judul']}\n"
+                 . "ℹ️ Deskripsi: " . ($data['deskripsi'] ? "{$data['deskripsi']}\n\n" : "\n")
+                 . "📅 Deadline: {$tglDeadline}\n"
+                 . str_repeat('─', 24) . "\n"
                  . "_Segera kerjakan!_ ✍️";
 
     $terkirim = 0;
@@ -1285,8 +1291,10 @@ function simpanPengumpulanTugas(
         ));
 
         $emoji = $status === 'dikumpulkan' ? '✅' : '⚠️';
-        $pesan = "📬 *Pengumpulan Tugas*\n\n"
+        $pesan = "📬 *Pengumpulan Tugas*\n"
+               . str_repeat('─', 24) . "\n"
                . "*{$tugas['judul']}*\n"
+               . str_repeat('─', 16) . "\n"
                . "👤 {$siswa['nama_lengkap']}\n"
                . "⏰ " . date('d/m/Y H:i') . "\n"
                . "{$emoji} " . ucfirst($status);
@@ -1376,11 +1384,13 @@ function simpanRevisiTugas(
             $akunId
         ));
 
-        $pesan = "📝 *Revisi Tugas Masuk (v{$nomorVersi})*\n\n"
+        $pesan = "📝 *Revisi Tugas Masuk (v{$nomorVersi})*\n"
+                . str_repeat('─', 24) . "\n"
                . "*{$tugas['judul']}*\n"
                . "👤 {$siswa['nama_lengkap']}\n"
-               . "⏰ " . date('d/m/Y H:i') . "\n\n"
-               . "_Tinjau revisi di dashboard._";
+               . "⏰ " . date('d/m/Y H:i') . "\n"
+               . str_repeat('─', 24) . "\n"
+               . "_Tinjau revisi di menu    ._";
 
         sendMsg((int) $tugas['telegram_chat_id'], $pesan);
     }
@@ -1398,21 +1408,34 @@ function simpanRevisiTugas(
  */
 function getNilaiSiswa(int $akunId): array
 {
-    return sirey_fetchAll(sirey_query(
-        'SELECT t.judul, mp.nama AS matpel, g.nama_grup,
-                pn.nilai, t.poin_maksimal, pn.catatan_guru, pn.status_lulus,
-                ROUND(pn.nilai / t.poin_maksimal * 100, 1) AS persentase
-         FROM penilaian_rayhanRP pn
-         INNER JOIN pengumpulan_rayhanRP p ON pn.pengumpulan_id = p.pengumpulan_id
-         INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id
-         LEFT JOIN mata_pelajaran_rayhanRP mp ON t.matpel_id = mp.matpel_id
-         LEFT JOIN grup_rayhanRP g ON t.grup_id = g.grup_id
-         WHERE p.akun_id = ? AND pn.nilai IS NOT NULL
-         ORDER BY pn.dinilai_pada DESC
-         LIMIT 20',
-        'i',
-        $akunId
-    ));
+    // Query sederhana: ambil semua penilaian yang ada
+    $query = 'SELECT 
+                t.judul, 
+                mp.nama AS matpel, 
+                g.nama_grup,
+                pn.nilai, 
+                pn.pengumpulan_id,
+                t.poin_maksimal, 
+                pn.catatan_guru, 
+                pn.status_lulus,
+                pn.dinilai_pada,
+                CASE 
+                    WHEN t.poin_maksimal > 0 THEN ROUND(pn.nilai / t.poin_maksimal * 100, 1)
+                    ELSE 0
+                END AS persentase
+             FROM penilaian_rayhanRP pn
+             INNER JOIN pengumpulan_rayhanRP p ON pn.pengumpulan_id = p.pengumpulan_id
+             INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id
+             LEFT JOIN mata_pelajaran_rayhanRP mp ON t.matpel_id = mp.matpel_id
+             LEFT JOIN grup_rayhanRP g ON t.grup_id = g.grup_id
+             WHERE p.akun_id = ? AND pn.nilai IS NOT NULL
+             ORDER BY pn.dinilai_pada DESC
+             LIMIT 100';
+    
+    $result = sirey_fetchAll(sirey_query($query, 'i', $akunId));
+    error_log("[getNilaiSiswa] akun_id={$akunId}, ditemukan " . count($result ?? []) . " nilai");
+    
+    return $result ?? [];
 }
 
 /**
@@ -1420,19 +1443,29 @@ function getNilaiSiswa(int $akunId): array
  */
 function getTugasYangBelumDinilai(int $akunId): array
 {
-    return sirey_fetchAll(sirey_query(
-        'SELECT t.judul, mp.nama AS matpel, g.nama_grup, p.waktu_kumpul, t.tenggat, t.poin_maksimal
-         FROM pengumpulan_rayhanRP p
-         INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id
-         LEFT JOIN mata_pelajaran_rayhanRP mp ON t.matpel_id = mp.matpel_id
-         LEFT JOIN grup_rayhanRP g ON t.grup_id = g.grup_id
-         LEFT JOIN penilaian_rayhanRP pn ON pn.pengumpulan_id = p.pengumpulan_id
-         WHERE p.akun_id = ? AND pn.penilaian_id IS NULL
-         ORDER BY p.waktu_kumpul DESC
-         LIMIT 20',
-        'i',
-        $akunId
-    ));
+    // Cari pengumpulan yang TIDAK ada penilaiannya (LEFT JOIN dengan IS NULL)
+    $query = 'SELECT 
+                t.judul, 
+                mp.nama AS matpel, 
+                g.nama_grup, 
+                p.waktu_kumpul, 
+                t.tenggat, 
+                t.poin_maksimal,
+                p.pengumpulan_id,
+                p.status AS pengumpulan_status
+             FROM pengumpulan_rayhanRP p
+             INNER JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id
+             LEFT JOIN mata_pelajaran_rayhanRP mp ON t.matpel_id = mp.matpel_id
+             LEFT JOIN grup_rayhanRP g ON t.grup_id = g.grup_id
+             LEFT JOIN penilaian_rayhanRP pn ON pn.pengumpulan_id = p.pengumpulan_id
+             WHERE p.akun_id = ? AND pn.penilaian_id IS NULL
+             ORDER BY p.waktu_kumpul DESC
+             LIMIT 100';
+    
+    $result = sirey_fetchAll(sirey_query($query, 'i', $akunId));
+    error_log("[getTugasYangBelumDinilai] akun_id={$akunId}, ditemukan " . count($result ?? []) . " tugas belum dinilai");
+    
+    return $result ?? [];
 }
 
 /**
@@ -1450,7 +1483,7 @@ function formatNilaiSiswa(array $nilaiList, array $belumDinilaiList = []): strin
     // ─── SUDAH DINILAI ───
     if (!empty($nilaiList)) {
         $pesan .= "✅ *SUDAH DINILAI* (" . count($nilaiList) . ")\n";
-        $pesan .= str_repeat('─', 16) . "\n\n";
+        $pesan .= str_repeat('─', 16) . "\n";
 
         foreach ($nilaiList as $row) {
             $persen = (float) ($row['persentase'] ?? 0);
@@ -1459,7 +1492,7 @@ function formatNilaiSiswa(array $nilaiList, array $belumDinilaiList = []): strin
                 $persen >= 80 => '⭐',
                 $persen >= 70 => '✅',
                 $persen >= 60 => '⚠️',
-                default       => '❌',
+                default       => '🔄',
             };
 
             $statusLabel = match ($row['status_lulus'] ?? '') {
@@ -1478,7 +1511,7 @@ function formatNilaiSiswa(array $nilaiList, array $belumDinilaiList = []): strin
             $pesan .= "{$emoji} *{$row['judul']}*\n";
             $pesan .= "   📚 {$row['matpel']}";
             if (!empty($row['nama_grup'])) {
-                $pesan .= " | 🎓 {$row['nama_grup']}";
+                $pesan .= "\n   🎓 {$row['nama_grup']}";
             }
             $pesan .= "\n";
             $pesan .= "   💯 *{$nilaiStr}/{$row['poin_maksimal']}* ({$persen}%) — {$statusLabel}\n";
@@ -1500,14 +1533,14 @@ function formatNilaiSiswa(array $nilaiList, array $belumDinilaiList = []): strin
     // ─── BELUM DINILAI ───
     if (!empty($belumDinilaiList)) {
         $pesan .= "⏳ *BELUM DINILAI* (" . count($belumDinilaiList) . ")\n";
-        $pesan .= str_repeat('─', 16) . "\n\n";
+        $pesan .= str_repeat('─', 16) . "\n";
 
         foreach ($belumDinilaiList as $row) {
             $tglKumpul = date('d/m H:i', strtotime((string) $row['waktu_kumpul']));
             $pesan .= "📝 *{$row['judul']}*\n";
             $pesan .= "   📚 {$row['matpel']}";
             if (!empty($row['nama_grup'])) {
-                $pesan .= " | 🎓 {$row['nama_grup']}";
+                $pesan .= "\n   🎓 {$row['nama_grup']}";
             }
             $pesan .= "\n";
             $pesan .= "   ⏰ Dikumpulkan: {$tglKumpul}\n";
@@ -1745,8 +1778,10 @@ function savePenilaian(
         $pengumpulanId
     ));
 
+    error_log("[PENILAIAN] Cek penilaian existing: " . json_encode($ada));
+
     if ($ada) {
-        sirey_execute(
+        $result = sirey_execute(
             'UPDATE penilaian_rayhanRP
              SET nilai = ?, status_lulus = ?, catatan_guru = ?, dinilai_oleh = ?, dinilai_pada = NOW()
              WHERE penilaian_id = ?',
@@ -1757,8 +1792,9 @@ function savePenilaian(
             $guruId,
             (int) $ada['penilaian_id']
         );
+        error_log("[PENILAIAN] UPDATE penilaian: " . ($result ? "✅ SUCCESS" : "❌ FAILED"));
     } else {
-        sirey_execute(
+        $result = sirey_execute(
             'INSERT INTO penilaian_rayhanRP
              (pengumpulan_id, dinilai_oleh, nilai, status_lulus, catatan_guru, dinilai_pada)
              VALUES (?, ?, ?, ?, ?, NOW())',
@@ -1769,41 +1805,95 @@ function savePenilaian(
             $statusLulus,
             $catatan ?? ''
         );
+        error_log("[PENILAIAN] INSERT penilaian: " . ($result ? "✅ SUCCESS" : "❌ FAILED"));
     }
 
-    // Kirim notifikasi ke siswa
-    $userTg = sirey_fetch(sirey_query(
-        'SELECT at.telegram_chat_id
-         FROM akun_telegram_rayhanRP at
-         INNER JOIN pengumpulan_rayhanRP p ON at.akun_id = p.akun_id
+    // Update status pengumpulan menjadi 'graded'
+    error_log("[PENILAIAN] Attempting to update pengumpulan_id {$pengumpulanId} status to 'graded'");
+    $updateResult = sirey_execute(
+        'UPDATE pengumpulan_rayhanRP SET status = ? WHERE pengumpulan_id = ?',
+        'si',
+        'graded',
+        $pengumpulanId
+    );
+    error_log("[PENILAIAN] UPDATE pengumpulan status: " . ($updateResult ? "✅ SUCCESS" : "❌ FAILED"));
+    
+    // Verify hasil update
+    $verifyStatus = sirey_fetch(sirey_query(
+        'SELECT status FROM pengumpulan_rayhanRP WHERE pengumpulan_id = ?',
+        'i',
+        $pengumpulanId
+    ));
+    error_log("[PENILAIAN] Verify status pengumpulan setelah update: " . ($verifyStatus ? json_encode($verifyStatus) : "NOT FOUND"));
+
+    // Kirim notifikasi ke siswa - SIMPLIFIED
+    error_log("[NOTIFIKASI] Processing notif untuk pengumpulan_id: {$pengumpulanId}");
+    
+    // Ambil semua data sekaligus
+    $siswaData = sirey_fetch(sirey_query(
+        'SELECT 
+            p.akun_id,
+            at.telegram_chat_id,
+            t.judul,
+            t.poin_maksimal
+         FROM pengumpulan_rayhanRP p
+         LEFT JOIN akun_telegram_rayhanRP at ON at.akun_id = p.akun_id
+         LEFT JOIN tugas_rayhanRP t ON p.tugas_id = t.tugas_id
          WHERE p.pengumpulan_id = ?',
         'i',
         $pengumpulanId
     ));
+    
+    error_log("[NOTIFIKASI] Data siswa: " . json_encode($siswaData));
+    
+    if (!$siswaData) {
+        error_log("[NOTIFIKASI] ⚠️ Data pengumpulan tidak ditemukan");
+        return ['success' => true, 'message' => 'Penilaian disimpan (pengumpulan tidak found)'];
+    }
+    
+    $chatId = (int) ($siswaData['telegram_chat_id'] ?? 0);
+    $judul = (string) ($siswaData['judul'] ?? 'Tugas');
+    $poinMax = (int) ($siswaData['poin_maksimal'] ?? 100);
+    
+    error_log("[NOTIFIKASI] Chat ID: {$chatId}, Judul: {$judul}");
+    
+    // Jika chat_id kosong, siswa belum login telegram
+    if ($chatId <= 0) {
+        error_log("[NOTIFIKASI] ⚠️ Siswa belum login ke Telegram (chat_id kosong)");
+        return ['success' => true, 'message' => 'Penilaian disimpan (siswa belum login telegram)'];
+    }
+    
+    // Buat pesan
+    $emojiStatus = match ($statusLulus) {
+        'lulus'       => '✅ Lulus',
+        'revisi'      => '✏️ Revisi',
+        'tidak_lulus' => '❌ Tidak Lulus',
+        default       => '📊 ' . $statusLulus,
+    };
+    
+    $nilaiStr = floor($nilai) == $nilai ? (string)(int)$nilai : number_format($nilai, 1);
+    
+    $pesan = "🎉 *Tugas Anda Sudah Dinilai!*\n"
+           . str_repeat('─', 24) . "\n"
+           . "📌 *{$judul}*\n"
+           . formatNilaiBintang($nilai, $poinMax) . "\n"
+           . "Status: {$emojiStatus} \n";
 
-    if ($userTg && !empty($userTg['telegram_chat_id'])) {
-        $emojiStatus = match ($statusLulus) {
-            'lulus'       => '✅ Lulus',
-            'revisi'      => '✏️ Revisi',
-            'tidak_lulus' => '❌ Tidak Lulus',
-            default       => $statusLulus,
-        };
+    if (!empty($catatan)) {
+        $pesan .= "💬 _Catatan guru:_ {$catatan} \n";
+    }
 
-        $nilaiStr = floor($nilai) == $nilai ? (string)(int)$nilai : number_format($nilai, 1);
-        $pesan    = "🎉 *Tugas Anda Sudah Dinilai!*\n\n"
-                  . "*{$detail['judul']}*\n"
-                  . formatNilaiBintang($nilai, (int) $poinMax) . "\n"
-                  . "Status: {$emojiStatus}";
+    if ($statusLulus === 'revisi') {
+        $pesan .= str_repeat('─', 24) . "\n📝 *Mohon perbaiki dan kirim ulang jawaban Anda.*";
+    }
 
-        if ($catatan) {
-            $pesan .= "\n\n💬 _Catatan guru:_\n{$catatan}";
-        }
-
-        if ($statusLulus === 'revisi') {
-            $pesan .= "\n\n📝 *Mohon perbaiki dan kirim ulang jawaban Anda.*";
-        }
-
-        sendMsg((int) $userTg['telegram_chat_id'], $pesan);
+    error_log("[NOTIFIKASI] Pesan ke {$chatId}: " . substr($pesan, 0, 100) . "...");
+    
+    $sent = sendMsg($chatId, $pesan);
+    if ($sent) {
+        error_log("[NOTIFIKASI] ✅ Berhasil dikirim");
+    } else {
+        error_log("[NOTIFIKASI] ❌ Gagal dikirim (sendMsg return false)");
     }
 
     return ['success' => true, 'message' => 'Penilaian berhasil disimpan'];
@@ -1920,19 +2010,21 @@ function formatPreviewPengumpulan(array $tugas, ?string $teksJawaban, ?string $l
 {
     $tgl   = date('d/m/Y H:i', strtotime((string) $tugas['tenggat']));
     $sisa  = sisaWaktu((string) $tugas['tenggat']);
-    $pesan = "✅ *Konfirmasi Pengumpulan*\n\n"
+    $pesan = "✅ *Konfirmasi Pengumpulan*\n"
+           . str_repeat('─', 24) . "\n"
            . "📝 *{$tugas['judul']}*\n"
-           . "📚 {$tugas['matpel']} | 🎓 {$tugas['nama_grup']}\n"
-           . "📅 Deadline: {$tgl} _{$sisa}_\n\n"
-           . "━━━━━━━━━━━━━━\n";
+           . "📚 {$tugas['matpel']}\n"
+           . "🎓 {$tugas['nama_grup']}\n"
+           . "📅 Deadline: {$tgl} _{$sisa}_\n"
+           . str_repeat('─', 24) . "\n";
 
     if ($teksJawaban) {
         $preview = potongTeks($teksJawaban, 150);
         $pesan  .= "📄 *Jawaban:*\n_{$preview}_\n";
     }
 
-    $pesan .= "━━━━━━━━━━━━━━\n\n";
-    $pesan .= "Kirim pengumpulan ini?";
+    $pesan .= str_repeat('─', 24) . "\n";
+    $pesan .= "_Kirim pengumpulan ini?_";
 
     return $pesan;
 }
@@ -1964,25 +2056,28 @@ function formatKonfirmasiNilai(array $detail, float $nilaiInput, ?string $catata
  */
 function formatFormNilai(array $detail): string
 {
-    $pesan  = "✏️ *Input Nilai*\n\n";
+    $pesan  = "✏️ *Input Nilai*\n";
+    $pesan .= str_repeat('─', 24) . "\n";
     $pesan .= "👤 *{$detail['nama_lengkap']}*\n";
     $pesan .= "📝 {$detail['judul']}\n";
-    $pesan .= "💯 Range: 0 – {$detail['poin_maksimal']}\n\n";
+    $pesan .= "💯 Range: 0 – {$detail['poin_maksimal']}\n";
 
     if ($detail['teks_jawaban']) {
         $preview = potongTeks((string) $detail['teks_jawaban'], 200);
-        $pesan  .= "📄 *Jawaban:*\n_{$preview}_\n\n";
+        $pesan  .= "📄 *Jawaban:*\n_{$preview}_\n";
     }
 
     if ($detail['file_nama_asli']) {
-        $pesan .= "📎 *File:* {$detail['file_nama_asli']} _(lihat di pesan atas)_\n\n";
+        $pesan .= "📎 *File:* {$detail['file_nama_asli']} _(lihat di pesan atas)_\n";
     }
 
+    $pesan .=  str_repeat('─', 24) . "\n";
+    
     if ($detail['nilai'] !== null) {
         $pesan .= "⚠️ _Nilai sebelumnya: {$detail['nilai']}_\n\n";
     }
 
-    $pesan .= "Kirim angka nilai (contoh: 85 atau 90.5):";
+    $pesan .= "_Kirim angka nilai (contoh: 85 atau 90.5):_";
 
     return $pesan;
 }

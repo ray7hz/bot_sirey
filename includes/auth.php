@@ -15,6 +15,7 @@ function can(string $permission, array $admin): bool
         'delete_user'           => ['admin'],
         'reset_password'        => ['admin'],
         'view_grup'             => ['kurikulum', 'kepala_sekolah'],
+        'view_grup_members'     => ['kurikulum', 'kepala_sekolah'],
         'create_grup'           => ['kurikulum'],
         'update_grup'           => ['kurikulum'],
         'delete_grup'           => ['kurikulum'],

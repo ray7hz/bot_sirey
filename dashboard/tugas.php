@@ -212,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($status === 'active') {
                         $mp_row  = sirey_fetch(sirey_query('SELECT nama FROM mata_pelajaran_rayhanRP WHERE matpel_id=?','i',$matpel_id));
                         $tgl_fmt = date('d/m/Y H:i', strtotime($tenggat));
-                        $tg_msg  = "📝 Tugas Baru!\n\n*$judul*\n".($mp_row ? "Mapel: {$mp_row['nama']}\n" : '')."Deadline: $tgl_fmt";
+                        $tg_msg  = "📝 Tugas Baru!\n" . str_repeat('─', 24) . "\n📌 *$judul*\n" . ($mp_row ? "📚 Mapel: {$mp_row['nama']}\n" : '') . "📅 Deadline: $tgl_fmt";
                         if ($tipe_tugas === 'grup') {
                             $targets = sirey_fetchAll(sirey_query(
                                 'SELECT DISTINCT at.telegram_chat_id FROM akun_telegram_rayhanRP at

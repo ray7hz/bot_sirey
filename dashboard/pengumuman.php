@@ -71,8 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ? sirey_fetchAll(sirey_query($sql_tg, $t_types, ...$t_params))
                 : sirey_fetchAll(sirey_query($sql_tg));
 
-            $prefix = match($prioritas) { 'penting'=>'[⚠️PENTING]', 'darurat'=>'[🚨DARURAT]', default=>'[ℹ️Pengumuman]' };
-            $tg_text = "$prefix\n\n*$judul:*\n\n$isi\n\n— SKADACI BOT";
+            $prefix = match($prioritas) { 'penting'=>'⚠️ PENTING', 'darurat'=>'🚨 DARURAT', default=>'ℹ️ Pengumuman' };
+            $tg_text = "*$prefix*\n" . str_repeat('─', 24) . "\n📌 *$judul*\n   $isi\n" . str_repeat('─', 24) . "\n_— SKADACI BOT_";
             $sent = 0;
             foreach ($targets as $t) {
                 if (!empty($t['telegram_chat_id']) && sendTelegramMessage((int)$t['telegram_chat_id'], $tg_text)) $sent++;

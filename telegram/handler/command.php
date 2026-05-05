@@ -43,8 +43,10 @@ function handleCommand(string $text, int $chatId, ?array $user): bool
             setState($chatId, ['step' => 'ask_nis']);
             sendMsgRemoveKeyboard(
                 $chatId,
-                "👋 Selamat datang di *SKADACI BOT*!\n\n"
-                . "🏫 _Sistem Informasi Sekolah berbasis Telegram_\n\n"
+                "👋 Selamat datang di *SKADACI BOT*!\n"
+                . str_repeat('─', 24) . "\n"
+                . "ℹ️ _Bot resmi manajemen tugas & jadwal sekolah_\n"
+                . str_repeat('─', 24) . "\n"
                 . "Silakan login untuk melanjutkan.\n"
                 . "Masukkan *NIS/NIP* Anda:"
             );
@@ -54,19 +56,28 @@ function handleCommand(string $text, int $chatId, ?array $user): bool
     }
 
     // ── /help ────────────────────────────────────────────────────
-    if ($text === '/help' || $text === '/bantuan') {
-        $pesan = "ℹ️ *Bantuan SKADACI BOT*\n\n"
+    if ($text === '/help' || $text === '/bantuan'|| $text === '❓ Bantuan') {
+        $pesan = "ℹ️ *Bantuan SKADACI BOT*\n"
+               . str_repeat('─', 24) . "\n"
                . "*Perintah yang tersedia:*\n"
-               . "`/start` — Masuk ke bot / tampilkan menu\n"
+                . str_repeat('─', 16) . "\n"
+                . "`/start` — Masuk ke bot / tampilkan menu\n"
                . "`/logout` — Keluar dari akun\n"
                . "`/batal` — Batalkan aksi saat ini\n"
                . "`/info` — Info akun yang sedang login\n"
                . "`/help` — Tampilkan pesan ini\n\n"
-               . "*Navigasi:*\n"
-               . "Gunakan tombol menu di bawah layar untuk navigasi.\n"
-               . "Tombol *🔙 Kembali ke Menu* akan membawa Anda ke menu utama.\n\n"
-               . "*Masalah?*\n"
-               . "Hubungi administrator sekolah jika mengalami kendala.";
+               . "ℹ️ *Navigasi:*\n"
+               . str_repeat('─', 16) . "\n"
+               . "Gunakan tombol menu di bawah layar untuk navigasi.\n\n"
+                . "ℹ️ *FAQ & Troubleshooting:*\n"
+                 . str_repeat('─', 16) . "\n"
+                 . "Q: Saya lupa password, bagaimana cara reset?\n"
+                 . "A: Hubungi administrator sekolah untuk reset password.\n\n"
+                 . "Q: Kenapa saya tidak menerima notifikasi?\n"
+                 . "A: Pastikan jam notifikasi sudah diatur dan bot tidak diblokir.\n\n"
+               . "*Ada Masalah ?*\n"
+                . str_repeat('─', 16) . "\n"
+                . "Jika mengalami kendala, silakan hubungi administrator sekolah.";
 
         if ($user !== null) {
             sendMsg($chatId, $pesan, mainKeyboard((string) $user['role']));
@@ -107,7 +118,7 @@ function handleCommand(string $text, int $chatId, ?array $user): bool
         }
 
         invalidateTelegramSession($chatId);
-        setState($chatId, null);
+        setState($chatId, ['step' => 'waiting_start']);
 
         sendMsgRemoveKeyboard(
             $chatId,
@@ -122,8 +133,8 @@ function handleCommand(string $text, int $chatId, ?array $user): bool
     // ── /batal ───────────────────────────────────────────────────
     if ($text === '/batal') {
         if ($user === null) {
-            setState($chatId, ['step' => 'ask_nis']);
-            sendMsg($chatId, "↩️ Dibatalkan. Masukkan *NIS/NIP* untuk login:");
+            setState($chatId, ['step' => 'waiting_start']);
+            sendMsg($chatId, "↩️ Dibatalkan. Ketik `/start` untuk memulai kembali.");
             return true;
         }
 

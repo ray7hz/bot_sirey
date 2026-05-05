@@ -81,10 +81,11 @@ if ($aksi_ajax !== '') {
         ));
         if ($tg && $tg['telegram_chat_id']) {
             $em = match($st_lulus) { 'lulus'=>'✅ Lulus','revisi'=>'✏️ Revisi',default=>'❌ Tidak Lulus' };
-            $msg = "🎉 *Tugas Anda Sudah Dinilai!*\n\nTugas: *{$tg['judul']}*\nNilai: *$nilai*\nStatus: $em"
-                  .($catatan ? "\nCatatan:\n_$catatan _" : '')
-                  .($st_lulus === 'revisi' ? "\n\n📝 *Silakan perbaiki dan resubmit.*" : '')
-                  ."\n\n— Bot SiRey";
+            $msg = "🎉 *Tugas Anda Sudah Dinilai!*\n" . str_repeat('─', 24) . "\n📌 Tugas: *{$tg['judul']}*\n🏆 Nilai: *$nilai*\nStatus: $em"
+                  .($catatan ? "\n🗒️ Catatan:\n_$catatan _\n" : '')
+                  . str_repeat('─', 24) 
+                  .($st_lulus === 'revisi' ? "\n📝 *Silakan perbaiki dan resubmit.*" : '')
+                  . "\n_— SKADACI BOT_";
             sendTelegramMessage((int)$tg['telegram_chat_id'], $msg);
         }
         echo json_encode(['success'=>true,'message'=>'Nilai tersimpan.']);

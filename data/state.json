@@ -22,25 +22,28 @@
     },
     "8445211581": {
         "step": "menu",
-        "session_token": "28da5a7c5a836fca476a809b3d38aab9ec9a7665e18ee8614ff4c75f51e98e0c",
+        "session_token": "b35c06fc38b531fb3a724a04b130e7c25403fb05dcbfea28c8bb06067d1b227f",
         "user_cache": {
-            "akun_id": 219,
-            "nama_lengkap": "Kiki Juniantie, S.Pd",
+            "akun_id": 42,
+            "nama_lengkap": "Rd. Irfan Santika Rahman, S Pd., MT.",
             "role": "guru",
-            "nis_nip": "198006052024212012"
+            "nis_nip": "198408062010011009"
         }
     },
     "987654321": {
         "step": "ask_nis"
     },
+    "6202447439": {
+        "step": "ask_nis"
+    },
     "6048830408": {
         "step": "menu",
-        "session_token": "",
+        "session_token": "bc63a5e4e172665c296924748f4e3dc01967585dfece0ee2b493ad14da7e6ea6",
         "user_cache": {
             "akun_id": 34,
-            "nama_lengkap": "RAYHAN RIZKY PRATAMA",
+            "nama_lengkap": "",
             "role": "siswa",
-            "nis_nip": "10243313"
+            "nis_nip": ""
         }
     }
 }

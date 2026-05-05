@@ -25,9 +25,16 @@ if ($aksi_ajax !== '') {
     }
 
     $bisa_kelola = can('update_grup', $admin);
+    $bisa_lihat_anggota = can('view_grup_members', $admin);
 
     // ── GET MEMBERS ──────────────────────────────────────────────
     if ($aksi_ajax === 'get_members') {
+        if (!$bisa_lihat_anggota) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
+            exit;
+        }
         header('Content-Type: text/html; charset=utf-8');
         $cari = trim((string)($_GET['search'] ?? ''));
         $sql  = "SELECT a.akun_id,a.nis_nip,a.nama_lengkap,a.role,a.jenis_kelamin
@@ -97,10 +104,16 @@ if ($aksi_ajax !== '') {
         exit;
     }
 
-    // ── GET CURRENT MEMBERS (checkbox untuk bulk delete) ──────────
+    // ── GET CURRENT MEMBERS (checkbox untuk bulk delete, atau view-only untuk readonly) ──────────
     if ($aksi_ajax === 'get_current_members') {
         header('Content-Type: text/html; charset=utf-8');
-        if (!$bisa_kelola) { echo ''; exit; }
+        $readonly = (int)($_GET['readonly'] ?? 0);
+        
+        // Jika readonly=1, butuh minimal bisa_lihat_anggota; jika tidak, butuh bisa_kelola
+        if ($readonly === 1 && !$bisa_lihat_anggota) {
+            echo ''; exit;
+        }
+        
         $rows = sirey_fetchAll(sirey_query(
             "SELECT a.akun_id,a.nis_nip,a.nama_lengkap,a.role,a.jenis_kelamin
              FROM akun_rayhanrp a JOIN grup_anggota_rayhanrp ga ON a.akun_id=ga.akun_id
@@ -108,27 +121,52 @@ if ($aksi_ajax !== '') {
              ORDER BY a.nama_lengkap ASC", 'i', $id_grup
         ));
         if (empty($rows)) { echo '<p class="text-center text-muted py-4">Belum ada anggota.</p>'; exit; }
-        echo '<div class="row g-2" id="currentMembersContainer">';
-        foreach ($rows as $m) {
-            $icon = $m['jenis_kelamin'] === 'L' ? '<i class="bi bi-person-fill text-primary"></i>' : '<i class="bi bi-person-fill text-danger"></i>';
-            $uid = 'member-'.(int)$m['akun_id'];
-            $badgeClass = match($m['role']) {
-                'admin' => 'bg-danger',
-                'guru' => 'bg-success',
-                'kurikulum' => 'bg-primary',
-                'kepala_sekolah' => 'bg-info text-dark',
-                default => 'bg-secondary'
-            };
-            echo '<div class="col-md-6 col-lg-4">';
-            echo '<label class="form-check d-flex align-items-start p-2 border rounded cursor-pointer checkbox-item" style="cursor:pointer; transition: all 0.2s;" data-checkbox-id="'.$uid.'">';
-            echo '<input type="checkbox" class="form-check-input d-none memberCheckbox" value="'.(int)$m['akun_id'].'" data-label-id="'.$uid.'">';
-            echo '<div class="ms-0 text-start" style="font-size:13px; width:100%;">';
-            echo '<div class="fw-600">'.htmlspecialchars($m['nis_nip']).'</div>';
-            echo '<div class="text-muted">'.$icon.' '.htmlspecialchars($m['nama_lengkap']).'</div>';
-            echo '<div><span class="badge '.$badgeClass.'" style="font-size:10px;">'.htmlspecialchars($m['role']).'</span></div>';
-            echo '</div></label></div>';
+        
+        if ($readonly === 1) {
+            // ── View-only mode (untuk kepala sekolah) ──
+            echo '<div class="row g-2" id="currentMembersContainer">';
+            foreach ($rows as $m) {
+                $icon = $m['jenis_kelamin'] === 'L' ? '<i class="bi bi-person-fill text-primary"></i>' : '<i class="bi bi-person-fill text-danger"></i>';
+                $badgeClass = match($m['role']) {
+                    'admin' => 'bg-danger',
+                    'guru' => 'bg-success',
+                    'kurikulum' => 'bg-primary',
+                    'kepala_sekolah' => 'bg-info text-dark',
+                    default => 'bg-secondary'
+                };
+                echo '<div class="col-md-6 col-lg-4">';
+                echo '<div class="d-flex align-items-start p-2 border rounded" style="cursor:default;">';
+                echo '<div class="ms-0 text-start" style="font-size:13px; width:100%;">';
+                echo '<div class="fw-600">'.htmlspecialchars($m['nis_nip']).'</div>';
+                echo '<div class="text-muted">'.$icon.' '.htmlspecialchars($m['nama_lengkap']).'</div>';
+                echo '<div><span class="badge '.$badgeClass.'" style="font-size:10px;">'.htmlspecialchars($m['role']).'</span></div>';
+                echo '</div></div></div>';
+            }
+            echo '</div>';
+        } else {
+            // ── Editable mode with checkboxes (untuk kurikulum) ──
+            echo '<div class="row g-2" id="currentMembersContainer">';
+            foreach ($rows as $m) {
+                $icon = $m['jenis_kelamin'] === 'L' ? '<i class="bi bi-person-fill text-primary"></i>' : '<i class="bi bi-person-fill text-danger"></i>';
+                $uid = 'member-'.(int)$m['akun_id'];
+                $badgeClass = match($m['role']) {
+                    'admin' => 'bg-danger',
+                    'guru' => 'bg-success',
+                    'kurikulum' => 'bg-primary',
+                    'kepala_sekolah' => 'bg-info text-dark',
+                    default => 'bg-secondary'
+                };
+                echo '<div class="col-md-6 col-lg-4">';
+                echo '<label class="form-check d-flex align-items-start p-2 border rounded cursor-pointer checkbox-item" style="cursor:pointer; transition: all 0.2s;" data-checkbox-id="'.$uid.'">';
+                echo '<input type="checkbox" class="form-check-input d-none memberCheckbox" value="'.(int)$m['akun_id'].'" data-label-id="'.$uid.'">';
+                echo '<div class="ms-0 text-start" style="font-size:13px; width:100%;">';
+                echo '<div class="fw-600">'.htmlspecialchars($m['nis_nip']).'</div>';
+                echo '<div class="text-muted">'.$icon.' '.htmlspecialchars($m['nama_lengkap']).'</div>';
+                echo '<div><span class="badge '.$badgeClass.'" style="font-size:10px;">'.htmlspecialchars($m['role']).'</span></div>';
+                echo '</div></label></div>';
+            }
+            echo '</div>';
         }
-        echo '</div>';
         exit;
     }
 
@@ -418,6 +456,8 @@ if (!can('view_grup', $data_admin_rayhanrp)) {
 $bisa_buat   = can('create_grup', $data_admin_rayhanrp);
 $bisa_ubah   = can('update_grup', $data_admin_rayhanrp);
 $bisa_hapus  = can('delete_grup', $data_admin_rayhanrp);
+$bisa_kelola = $bisa_ubah; // Alias untuk JavaScript
+$bisa_lihat_anggota = can('view_grup_members', $data_admin_rayhanrp);
 $bisa_tulis  = $bisa_buat || $bisa_ubah || $bisa_hapus;
 $id_pembuat  = (int)($data_admin_rayhanrp['id'] ?? 0);
 $pesan = $error = '';
@@ -782,7 +822,8 @@ $daftarGrup = $params ? sirey_fetchAll(sirey_query($sql,$types,...$params)) : si
 <script>
 let currentGrupId = 0, currentTab = 'anggota';
 // Apakah user boleh kelola (dari PHP ke JS)
-const bisaKelola = <?php echo json_encode($bisa_kelola ?? $bisa_ubah); ?>;
+const bisaKelola = <?php echo json_encode($bisa_kelola ?? false); ?>;
+const bisaLihatAnggota = <?php echo json_encode($bisa_lihat_anggota ?? false); ?>;
 
 // ── Open modal detail ──
 function openModal(gid, gname, tab) {
@@ -812,7 +853,8 @@ function loadTab(tab) {
 
 // ── Tambah anggota dengan checkbox (bulk insert) + tombol import Excel ──
 function loadAddMember() {
-  if (!bisaKelola) return; // Tidak tampilkan form jika tidak punya hak
+  // Jika tidak bisa lihat anggota sama sekali, jangan tampilkan apapun
+  if (!bisaKelola && !bisaLihatAnggota) return;
 
   const body = document.getElementById('detailBody');
   if (!body) {
@@ -820,29 +862,39 @@ function loadAddMember() {
     return;
   }
 
-  // ── Button Tambah Anggota (Always Visible) ──
-  const btnSection = document.createElement('div');
-  btnSection.className = 'mb-3 d-flex gap-2 align-items-center justify-content-between flex-wrap';
-  btnSection.innerHTML = `
-    <div>
-      <button class="btn btn-sm btn-primary" id="btnShowAddForm" onclick="toggleAddForm(true)">
-        <i class="bi bi-plus-circle me-1"></i>Tambah Anggota Baru
+  // ── Button Tambah Anggota (Hanya untuk bisa_kelola) ──
+  if (bisaKelola) {
+    const btnSection = document.createElement('div');
+    btnSection.className = 'mb-3 d-flex gap-2 align-items-center justify-content-between flex-wrap';
+    btnSection.innerHTML = `
+      <div>
+        <button class="btn btn-sm btn-primary" id="btnShowAddForm" onclick="toggleAddForm(true)">
+          <i class="bi bi-plus-circle me-1"></i>Tambah Anggota Baru
+        </button>
+        <button class="btn btn-sm btn-outline-success d-none" id="btnHideAddForm" onclick="toggleAddForm(false)">
+          <i class="bi bi-x-circle me-1"></i>Tutup Form
+        </button>
+      </div>
+      <button class="btn btn-sm btn-outline-success" onclick="bukaImportExcel()" title="Import banyak siswa sekaligus via file Excel">
+        <i class="bi bi-file-earmark-excel me-1"></i>Import Excel
       </button>
-      <button class="btn btn-sm btn-outline-success d-none" id="btnHideAddForm" onclick="toggleAddForm(false)">
-        <i class="bi bi-x-circle me-1"></i>Tutup Form
-      </button>
-    </div>
-    <button class="btn btn-sm btn-outline-success" onclick="bukaImportExcel()" title="Import banyak siswa sekaligus via file Excel">
-      <i class="bi bi-file-earmark-excel me-1"></i>Import Excel
-    </button>
-  `;
-  body.appendChild(btnSection);
+    `;
+    body.appendChild(btnSection);
+  } else if (bisaLihatAnggota) {
+    // Untuk read-only: tampilkan info yang sedang viewing
+    const infoSection = document.createElement('div');
+    infoSection.className = 'mb-3';
+    infoSection.innerHTML = '<p class="text-muted mb-0"><i class="bi bi-info-circle me-2"></i>Anda melihat data anggota kelas (read-only)</p>';
+    body.appendChild(infoSection);
+  }
 
   // ── Seksi: Tambah Anggota (Bulk Checkbox) - HIDDEN BY DEFAULT ──
-  const sectionAdd = document.createElement('div');
-  sectionAdd.className = 'p-3 bg-light rounded border mb-3 d-none';
-  sectionAdd.id = 'addFormSection';
-  body.appendChild(sectionAdd);
+  if (bisaKelola) {
+    const sectionAdd = document.createElement('div');
+    sectionAdd.className = 'p-3 bg-light rounded border mb-3 d-none';
+    sectionAdd.id = 'addFormSection';
+    body.appendChild(sectionAdd);
+  }
 
   // ── Seksi: Daftar Anggota Saat Ini (dengan checkbox untuk bulk delete) ──
   const sectionCurrent = document.createElement('div');
@@ -850,55 +902,65 @@ function loadAddMember() {
   sectionCurrent.id = 'currentSection';
   body.appendChild(sectionCurrent);
 
-  // Fetch both available users dan current members
-  Promise.all([
-    fetch(`./grup.php?action=get_available_users&grup_id=${currentGrupId}`).then(r => r.text()).catch(e => { console.error('get_available_users error:', e); return ''; }),
-    fetch(`./grup.php?action=get_current_members&grup_id=${currentGrupId}`).then(r => r.text()).catch(e => { console.error('get_current_members error:', e); return ''; })
-  ])
-  .then(([availableHtml, memberHtml]) => {
-    // ── Populate Available Users Section ──
-    let addContent = `
-      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <span class="fw-semibold" style="font-size:14px;"><i class="bi bi-plus-circle text-success me-2"></i>Tambah Anggota</span>
-        <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-secondary" id="selectAllAdd" onclick="toggleSelectAll('add')" title="Pilih Semua">
-            <i class="bi bi-check2-square me-1"></i>Pilih Semua
-          </button>
-        </div>
-      </div>`;
-
-    if (availableHtml.trim().includes('Semua pengguna sudah')) {
-      addContent += availableHtml;
-    } else {
-      addContent += `
-        <div class="mb-3">
-          <input type="text" class="form-control form-control-sm" id="searchAvailable" 
-                 placeholder="🔍 Cari siswa (NIS/Nama)..." onkeyup="filterAvailableUsers()">
-        </div>
-        <div id="siswaListContainer" style="max-height: 400px; overflow-y: auto;">
-          ${availableHtml}
-        </div>
-        <div class="d-flex gap-2 mt-3 pt-2 border-top">
-          <button class="btn btn-sm btn-success" onclick="bulkAddMembers()" id="btnBulkAdd" disabled>
-            <i class="bi bi-plus me-1"></i>Tambah <span id="addCount">0</span> Anggota
-          </button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="clearSelectAll('add')">
-            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
-          </button>
-        </div>
-      `;
+  // Fetch both available users (jika bisa_kelola) dan current members
+  const fetchPromises = [];
+  if (bisaKelola) {
+    fetchPromises.push(fetch(`./grup.php?action=get_available_users&grup_id=${currentGrupId}`).then(r => r.text()).catch(e => { console.error('get_available_users error:', e); return ''; }));
+  }
+  fetchPromises.push(fetch(`./grup.php?action=get_current_members&grup_id=${currentGrupId}&readonly=${bisaKelola ? 0 : 1}`).then(r => r.text()).catch(e => { console.error('get_current_members error:', e); return ''; }));
+  
+  Promise.all(fetchPromises).then(results => {
+    const availableHtml = bisaKelola ? results[0] : '';
+    const memberHtml = bisaKelola ? results[1] : results[0];
+    // ── Populate Available Users Section (hanya jika bisa_kelola) ──
+    let addContent = '';
+    if (bisaKelola) {
+      addContent = `
+        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+          <span class="fw-semibold" style="font-size:14px;"><i class="bi bi-plus-circle text-success me-2"></i>Tambah Anggota</span>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="selectAllAdd" onclick="toggleSelectAll('add')" title="Pilih Semua">
+              <i class="bi bi-check2-square me-1"></i>Pilih Semua
+            </button>
+          </div>
+        </div>`;
     }
-    sectionAdd.innerHTML = addContent;
+
+    if (bisaKelola) {
+      if (availableHtml.trim().includes('Semua pengguna sudah')) {
+        addContent += availableHtml;
+      } else {
+        addContent += `
+          <div class="mb-3">
+            <input type="text" class="form-control form-control-sm" id="searchAvailable" 
+                   placeholder="🔍 Cari siswa (NIS/Nama)..." onkeyup="filterAvailableUsers()">
+          </div>
+          <div id="siswaListContainer" style="max-height: 400px; overflow-y: auto;">
+            ${availableHtml}
+          </div>
+          <div class="d-flex gap-2 mt-3 pt-2 border-top">
+            <button class="btn btn-sm btn-success" onclick="bulkAddMembers()" id="btnBulkAdd" disabled>
+              <i class="bi bi-plus me-1"></i>Tambah <span id="addCount">0</span> Anggota
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="clearSelectAll('add')">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+            </button>
+          </div>
+        `;
+      }
+      const sectionAdd = document.getElementById('addFormSection');
+      if (sectionAdd) sectionAdd.innerHTML = addContent;
+    }
 
     // ── Populate Current Members Section ──
     let memberContent = `
       <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <span class="fw-semibold" style="font-size:14px;"><i class="bi bi-people text-info me-2"></i>Anggota Saat Ini</span>
-        <div class="d-flex gap-2">
+        ${bisaKelola ? `<div class="d-flex gap-2">
           <button class="btn btn-sm btn-outline-secondary" id="selectAllDel" onclick="toggleSelectAll('delete')" title="Pilih Semua">
             <i class="bi bi-check2-square me-1"></i>Pilih Semua
           </button>
-        </div>
+        </div>` : ''}
       </div>`;
 
     if (memberHtml.trim().includes('Belum ada anggota')) {
@@ -912,22 +974,23 @@ function loadAddMember() {
         <div id="membersListContainer" style="max-height: 400px; overflow-y: auto;">
           ${memberHtml}
         </div>
-        <div class="d-flex gap-2 mt-3 pt-2 border-top">
+        ${bisaKelola ? `<div class="d-flex gap-2 mt-3 pt-2 border-top">
           <button class="btn btn-sm btn-danger" onclick="bulkDeleteMembers()" id="btnBulkDelete" disabled>
             <i class="bi bi-trash me-1"></i>Hapus <span id="delCount">0</span> Anggota
           </button>
           <button class="btn btn-sm btn-outline-secondary" onclick="clearSelectAll('delete')">
             <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
           </button>
-        </div>
+        </div>` : ''}
       `;
     }
     sectionCurrent.innerHTML = memberContent;
 
-    // Attach event listeners untuk checkbox
-    attachCheckboxListeners();
-  })
-  .catch(err => {
+    // Attach event listeners untuk checkbox (hanya jika bisa_kelola)
+    if (bisaKelola) {
+      attachCheckboxListeners();
+    }
+  }).catch(err => {
     console.error('Error loading members:', err);
     body.innerHTML = '<p class="text-danger text-center py-4"><i class="bi bi-exclamation-triangle me-2"></i>Gagal memuat data anggota.</p>';
   });

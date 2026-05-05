@@ -63,9 +63,12 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
         sendMsg(
             $chatId,
-            "✅ *Login berhasil!*\n\n"
-            . "{$sapaan}, *{$akun['nama_lengkap']}*! 👋\n"
-            . "Role: _{$labelRole}_\n\n"
+            "✅ *Login berhasil!*\n"
+            . str_repeat('─', 24) . "\n"
+            . "{$sapaan},\n"
+            . "*{$akun['nama_lengkap']}*! 👋\n"
+            . "Role: _{$labelRole}_\n"
+            . str_repeat('─', 24) . "\n"
             . "Silakan pilih menu di bawah ini:",
             mainKeyboard((string) $akun['role'])
         );
@@ -115,7 +118,7 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             'user_cache' => _buildUserCache($user),
         ]));
 
-        sendMsg($chatId, "Pilih *kelas* untuk tugas *{$mapel['nama']}*:", $keyboard);
+        sendMsg($chatId, "ℹ️ _Pilih kelas untuk tugas {$mapel['nama']}:_", $keyboard);
         return true;
     }
 
@@ -150,9 +153,10 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
         sendMsgRemoveKeyboard(
             $chatId,
-            "📚 Mapel : *{$state['matpel']}*\n"
-            . "🎓 Kelas : *{$kelas['nama_grup']}*\n\n"
-            . "Masukkan *judul tugas*:"
+            "📚 *Mapel* : {$state['matpel']}\n"
+            . "🎓 *Kelas* : {$kelas['nama_grup']}\n"
+            . str_repeat('─', 24) . "\n"
+            . "_Masukkan judul tugas:_"
         );
 
         return true;
@@ -171,7 +175,10 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             'user_cache' => _buildUserCache($user),
         ]));
 
-        sendMsg($chatId, "Masukkan *deskripsi tugas*:\n\n_(Ketik `-` untuk melewati)_");
+        sendMsg($chatId, "ℹ️ _Masukkan deskripsi tugas:_\n"
+                . str_repeat('─', 24) . "\n"
+                . "_Ketik `-` untuk melewati_"
+        );
         return true;
     }
 
@@ -187,9 +194,9 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
         sendMsg(
             $chatId,
-            "Masukkan *deadline* tugas:\n\n"
-            . "Format: `DD/MM/YYYY HH:MM`\n"
-            . "Contoh: `25/12/2025 23:59`"
+            "ℹ️ Masukkan *deadline* tugas:\n" . str_repeat('─', 24) . "\n"
+             . "_Gunakan format:_ `DD/MM/YYYY HH:MM`\n"
+             . "_Contoh:_ `25/12/2025 23:59`"
         );
 
         return true;
@@ -213,13 +220,15 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             return true;
         }
 
-        $preview = "✅ *Konfirmasi Tugas Baru*\n\n"
-                 . "📚 Mapel    : {$state['matpel']}\n"
-                 . "🎓 Kelas    : {$state['kelas']}\n"
-                 . "📝 Judul    : {$state['judul']}\n"
-                 . (($state['deskripsi'] ?? '') !== '' ? "📋 Deskripsi: {$state['deskripsi']}\n" : '')
-                 . "📅 Deadline : " . $dt->format('d/m/Y H:i') . "\n\n"
-                 . "Buat tugas ini?";
+        $preview = "✅ *Konfirmasi Tugas Baru*\n"
+                    . str_repeat('─', 24) . "\n"
+                 . "📚 *Mapel*     : {$state['matpel']}\n"
+                 . "🎓 *Kelas*      : {$state['kelas']}\n"
+                 . "📝 *Judul*      : {$state['judul']}\n"
+                 . (($state['deskripsi'] ?? '') !== '' ? "📋 *Deskripsi*: {$state['deskripsi']}\n" : '')
+                 . "📅 *Deadline* : " . $dt->format('d/m/Y H:i') . "\n"
+                 . str_repeat('─', 24) . "\n"
+                 . "_Kirim tugas ini?_";
 
         setState($chatId, array_merge($state, [
             'step'       => 'tugas_konfirmasi',
@@ -252,7 +261,7 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             if ($ok) {
                 sendMsg(
                     $chatId,
-                    "✅ *Tugas berhasil dibuat!*\n\nSiswa sudah mendapat notifikasi. 📬",
+                    "✅ *Tugas berhasil dibuat!*\n" . str_repeat('─', 24) . "\nSiswa sudah mendapat notifikasi. 📬",
                     mainKeyboard($role)
                 );
             } else {
@@ -300,23 +309,26 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
         $poin       = (int) $detail['poin_maksimal'];
         $status     = (int) $tugas['sudah_kumpul'] > 0 ? '✅ Sudah' : '⏳ Belum';
 
-        $pesan = "📝 *Tugas #{$no}*\n\n";
-        $pesan .= "*Judul:* {$detail['judul']}\n\n";
+        $pesan = "📝 *Tugas #{$no}*\n";
+        $pesan .= str_repeat('─', 24) . "\n";
+        $pesan .= "*Judul:* {$detail['judul']}\n";
+        $pesan .= str_repeat('─', 16) . "\n";
         
         if (!empty($detail['deskripsi'])) {
-            $pesan .= "*Deskripsi:*\n{$detail['deskripsi']}\n\n";
+            $pesan .= "ℹ️ *Deskripsi:*\n{$detail['deskripsi']}\n";
         }
         
-        $pesan .= "📚 *Mata Pelajaran:* {$detail['matpel']}\n";
+        $pesan .= "\n📚 *Mata Pelajaran:* {$detail['matpel']}\n";
         $pesan .= "🎓 *Kelas:* {$detail['nama_grup']}\n";
         $pesan .= "📅 *Deadline:* {$tgl}\n";
         $pesan .= "⏳ *Sisa:* {$sisa}\n";
         
         if ($poin > 0) {
-            $pesan .= "⭐ *Poin Maksimal:* {$poin}\n";
+            $pesan .= "⭐ *Poin Maksimal:* {$poin}\n\n";
         }
         
-        $pesan .= "\n{$status} dikumpulkan\n\n";
+        $pesan .= str_repeat('─', 24) . "\n";
+        $pesan .= "{$status} dikumpulkan\n\n";
         
         // Kirim detail tugas
         sendMsg($chatId, $pesan, mainKeyboard((string) $user['role']));
@@ -345,17 +357,19 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
         $sisa       = sisaWaktu((string) $tugas['tenggat']);
         $tgl        = date('d/m/Y H:i', strtotime((string) $tugas['tenggat']));
 
-        $pesan  = "📝 *{$tugas['judul']}*\n\n"
-                . "📚 {$tugas['matpel']} | 🎓 {$tugas['nama_grup']}\n"
+        $pesan  = "📝 *{$tugas['judul']}*\n"
+                    . str_repeat('─', 24) . "\n"
+                . "📚 {$tugas['matpel']}\n"
+                . "🎓 {$tugas['nama_grup']}\n"
                 . "📅 Deadline: {$tgl}\n"
-                . "⏳ Sisa: {$sisa}\n\n";
+                . "⏳ Sisa: {$sisa}\n";
 
         if ($tipeKumpul === 'revisi') {
-            $pesan .= "⚠️ *INI ADALAH PENGUMPULAN REVISI*\n"
-                    . "Perbaiki jawaban sesuai catatan guru.\n\n";
+            $pesan .=  str_repeat('─', 24) . "\n⚠️ *INI ADALAH PENGUMPULAN REVISI*\n"
+                    . "Perbaiki jawaban sesuai catatan guru.\n";
         }
-
-        $pesan .= "Pilih cara pengumpulan:";
+        $pesan .= str_repeat('─', 24) . "\n";
+        $pesan .= "_Pilih cara pengumpulan:_";
 
         setState($chatId, array_merge($state, [
             'step'        => 'kumpul_pilih_tipe',
@@ -380,7 +394,7 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
                 'step'       => 'kumpul_input_teks',
                 'user_cache' => _buildUserCache($user),
             ]));
-            sendMsgRemoveKeyboard($chatId, "📄 Ketikkan *jawaban tugas* Anda di bawah ini:");
+            sendMsgRemoveKeyboard($chatId, "📄 _Ketikkan jawaban tugas Anda di bawah ini:_");
             return true;
         }
 
@@ -391,8 +405,10 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             ]));
             sendMsg(
                 $chatId,
-                "📎 Kirim *file atau foto* jawaban Anda.\n\n"
-                . "Format diterima: PDF, DOCX, XLSX, JPG, PNG, GIF\n\n"
+                "📎 Kirim *file atau foto* jawaban Anda.\n"
+                . str_repeat('─', 24) . "\n"
+                . "Format diterima: PDF, DOCX, XLSX, JPG, PNG, GIF\n"
+                . str_repeat('─', 24) . "\n"
                 . "_Kirim langsung ke chat ini._",
                 [['🔙 Kembali ke Menu']]
             );
@@ -490,8 +506,8 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
             if ($ok) {
                 $pesanOk = $tipeKumpul === 'revisi'
-                    ? "✅ *Revisi berhasil dikirim!*\n\n📝 {$judulTugas}\n📎 {$namaFile}\n\n✨ Revisi Anda diterima dan diproses!"
-                    : "✅ *Tugas berhasil dikumpulkan!*\n\n📝 {$judulTugas}\n📎 {$namaFile}\n\n_Guru akan menilai tugas Anda._";
+                    ? "✅ *Revisi berhasil dikirim!*\n" . str_repeat('─', 24) . "\n📝 {$judulTugas}\n📎 {$namaFile}\n" . str_repeat('─', 24) . "\n✨ Revisi Anda diterima dan diproses!"
+                    : "✅ *Tugas berhasil dikumpulkan!*\n" . str_repeat('─', 24) . "\n📝 {$judulTugas}\n📎 {$namaFile}\n" . str_repeat('─', 24) . "\n_Guru akan menilai tugas Anda._";
                 sendMsg($chatId, $pesanOk, mainKeyboard($role));
             } else {
                 sendMsg($chatId, "❌ Gagal menyimpan pengumpulan. Silakan coba lagi.", mainKeyboard($role));
@@ -524,8 +540,8 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
             if ($ok) {
                 $pesanOk = $tipeKumpul === 'revisi'
-                    ? "✅ *Revisi berhasil dikirim!*\n\n📝 {$judulTugas}\n\n✨ Revisi Anda diterima dan diproses!"
-                    : "✅ *Tugas berhasil dikumpulkan!*\n\n📝 {$judulTugas}\n\n_Guru akan menilai tugas Anda._";
+                    ? "✅ *Revisi berhasil dikirim!*\n". str_repeat('─', 24) . "\n📝 {$judulTugas}\n" . str_repeat('─', 24) . "\n✨ Revisi Anda diterima dan diproses!"
+                    : "✅ *Tugas berhasil dikumpulkan!*\n". str_repeat('─', 24) . "\n📝 {$judulTugas}\n" . str_repeat('─', 24) . "\n_Guru akan menilai tugas Anda._";
                 sendMsg($chatId, $pesanOk, mainKeyboard($role));
             } else {
                 sendMsg($chatId, "❌ Gagal menyimpan pengumpulan. Silakan coba lagi.", mainKeyboard($role));
@@ -566,29 +582,35 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
         $belumKumpul  = count($analisis['belum_kumpul']);
         $bar          = progressBar($sudahKumpul, $totalSiswa);
 
-        $pesan  = "📋 *Analisis Tugas*\n\n"
-                . "*{$t['judul']}*\n"
-                . "📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n";
+        $pesan  = "📋 *Analisis Tugas*\n"
+                . str_repeat('─', 24) . "\n"
+                . "📌 *{$t['judul']}*\n"
+                . str_repeat('─', 16) . "\n"
+                . "📚 {$t['matpel']}\n" 
+                . "🎓 {$t['nama_grup']}\n";
 
         if ($t['wali_kelas'] !== '-') {
             $pesan .= "👨‍💼 Wali: {$t['wali_kelas']}\n";
         }
 
         $pesan .= "\n📊 *Statistik:*\n"
+                . str_repeat('─', 16) . "\n"
                 . "👥 Total    : {$totalSiswa} siswa\n"
                 . "✅ Kumpul   : {$sudahKumpul} siswa\n"
                 . "⏳ Belum    : {$belumKumpul} siswa\n"
                 . "📈 Progress : {$bar}\n";
 
         if (!empty($analisis['sudah_kumpul'])) {
-            $pesan .= "\n✅ *Sudah Mengumpulkan:*\n";
+            $pesan .= "\n✅ *Sudah Mengumpulkan:*\n"
+                    . str_repeat('─', 16) . "\n";
             foreach ($analisis['sudah_kumpul'] as $s) {
                 $pesan .= "• {$s['nama_lengkap']} ({$s['nis_nip']})\n";
             }
         }
 
         if (!empty($analisis['belum_kumpul'])) {
-            $pesan .= "\n⏳ *Belum Mengumpulkan:*\n";
+            $pesan .= "\n⏳ *Belum Mengumpulkan:*\n"
+                    . str_repeat('─', 16) . "\n";
             // Batasi tampilan agar pesan tidak terlalu panjang
             $ditampilkan = array_slice($analisis['belum_kumpul'], 0, 15);
             foreach ($ditampilkan as $s) {
@@ -630,8 +652,9 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
         }
 
         $pesan  = "📝 *{$tugasPilih['judul']}*\n";
-        $pesan .= "💯 Poin Maksimal: {$tugasPilih['poin_maksimal']}\n\n";
-        $pesan .= "Pilih siswa yang akan dinilai:\n\n";
+        $pesan .= "💯 Poin Maksimal: {$tugasPilih['poin_maksimal']}\n";
+        $pesan .= str_repeat('─', 24) . "\n";
+        $pesan .= "ℹ️ _Pilih siswa yang akan dinilai:_\n\n";
 
         foreach ($pengumpulanList as $idx => $p) {
             $no2       = $idx + 1;
@@ -686,6 +709,7 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
         // Kirim file/foto jawaban jika ada
         if ($filePath !== '') {
+            sendMsg($chatId, "⏳ Mengimport file jawaban siswa...");
             sendTyping($chatId);
             $sent = sendSubmissionFileToGuru($chatId, $detail);
             if ($sent) {
@@ -741,8 +765,9 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
         sendMsg(
             $chatId,
-            "💯 Nilai: *{$nilai}/{$poinMax}*\n\n"
-            . "Ketik *catatan* untuk siswa, atau tekan tombol untuk lanjut tanpa catatan:",
+            "💯 Nilai: *{$nilai}/{$poinMax}*\n"
+            . str_repeat('─', 24) . "\n"
+            . "_Ketik catatan untuk siswa, atau tekan tombol untuk lanjut tanpa catatan:_",
             [['✓ Tanpa Catatan'], ['🔙 Kembali ke Menu']]
         );
 
@@ -765,9 +790,11 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             'user_cache'    => _buildUserCache($user),
         ]));
 
-        $pesan = "📊 *Pilih Status Penilaian*\n\n"
-               . "Nilai: *{$nilai}/{$detail['poin_maksimal']}*\n\n"
-               . "Tentukan status tugas siswa:";
+        $pesan = "📊 *Pilih Status Penilaian*\n"
+               . str_repeat('─', 24) . "\n"
+               . "Nilai: *{$nilai}/{$detail['poin_maksimal']}*\n"
+               . str_repeat('─', 24) . "\n"
+               . "_Tentukan status tugas siswa:_";
 
         sendMsg($chatId, $pesan, [
             ['✅ Lulus', '✏️ Revisi'],
@@ -804,7 +831,8 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
         $nilai   = (float) ($state['nilai_input'] ?? 0);
         $catatan = $state['catatan_input'] ?? null;
 
-        $pesan = "✅ *Konfirmasi Penilaian*\n\n"
+        $pesan = "✅ *Konfirmasi Penilaian*\n"
+                . str_repeat('─', 24) . "\n"
                . "👤 {$detail['nama_lengkap']}\n"
                . "📝 {$detail['judul']}\n"
                . "💯 Nilai: *{$nilai}/{$detail['poin_maksimal']}*\n"
@@ -814,7 +842,8 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             $pesan .= "💬 Catatan: _{$catatan}_\n";
         }
 
-        $pesan .= "\nSimpan penilaian ini?";
+        $pesan .= str_repeat('─', 24) . "\n";
+        $pesan .= "_Simpan penilaian ini?_";
 
         setState($chatId, array_merge($state, [
             'step'          => 'nilai_konfirmasi',
@@ -843,8 +872,10 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             $detail  = (array) ($state['pengumpulan_detail'] ?? []);
             $nilai   = (float) ($state['nilai_input'] ?? 0);
             
-            $pesan = "📊 *Pilih Status Penilaian*\n\n"
-                   . "Nilai: *{$nilai}/{$detail['poin_maksimal']}*\n\n"
+            $pesan = "📊 *Pilih Status Penilaian*\n"
+                     . str_repeat('─', 24) . "\n"
+                   . "Nilai: *{$nilai}/{$detail['poin_maksimal']}*\n"
+                        . str_repeat('─', 24) . "\n"
                    . "Tentukan status tugas siswa:";
 
             sendMsg($chatId, $pesan, [
@@ -884,7 +915,8 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
                     'tidak_lulus' => '❌ Ditolak',
                 ][$status] ?? $status;
 
-                $pesanOk = "✅ *Penilaian Berhasil Disimpan!*\n\n"
+                $pesanOk = "✅ *Penilaian Berhasil Disimpan!*\n"
+                         . str_repeat('─', 24) . "\n"
                          . "👤 {$detail['nama_lengkap']}\n"
                          . "📝 {$detail['judul']}\n"
                          . formatNilaiBintang((float) $state['nilai_input'], (int) $detail['poin_maksimal'])
@@ -895,7 +927,8 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
                 }
 
                 if (!empty($belumDinilai)) {
-                    $pesanOk .= "\n\n📌 Masih ada " . count($belumDinilai) . " siswa yang belum dinilai.";
+                    $pesanOk .= "\n" . str_repeat('─', 24) . "\n";
+                    $pesanOk .= "📌 _Masih ada " . count($belumDinilai) . " siswa yang belum dinilai._";
                 }
 
                 sendMsg($chatId, $pesanOk, mainKeyboard($role));
@@ -941,7 +974,7 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
         sendMsgRemoveKeyboard(
             $chatId,
-            "📢 Kelas: *{$kelas['nama_grup']}*\n\nMasukkan *judul pengumuman*:"
+            "📢 Kelas: *{$kelas['nama_grup']}*\n" . str_repeat('─', 24) . "\n_Masukan judul pengumuman_:"
         );
 
         return true;
@@ -960,7 +993,7 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             'user_cache' => _buildUserCache($user),
         ]));
 
-        sendMsg($chatId, "Masukkan *isi pengumuman*:");
+        sendMsg($chatId, "ℹ️ _Masukan isi pengumuman_:");
         return true;
     }
 
@@ -971,11 +1004,14 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             return true;
         }
 
-        $preview = "✅ *Konfirmasi Pengumuman*\n\n"
-                 . "🎓 Kelas  : {$state['kelas']}\n"
-                 . "📢 Judul  : {$state['judul']}\n\n"
-                 . "📋 *Isi:*\n{$text}\n\n"
-                 . "Kirim pengumuman ini?";
+        $preview = "✅ *Konfirmasi Pengumuman*\n"
+                 . str_repeat('─', 24) . "\n"
+                 . "🎓 *Kelas*  : {$state['kelas']}\n"
+                 . "📢 *Judul*  : {$state['judul']}\n"
+                 . str_repeat('─', 16) . "\n"
+                 . "📋 *Info:*\n{$text}\n"
+                 . str_repeat('─', 16) . "\n"
+                 . "_Kirim pengumuman ini?_";
 
         setState($chatId, array_merge($state, [
             'step'       => 'pengumuman_konfirmasi',
@@ -1006,7 +1042,7 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             if ($ok) {
                 sendMsg(
                     $chatId,
-                    "✅ *Pengumuman berhasil dikirim!*\n\nSiswa di kelas *{$state['kelas']}* sudah menerima notifikasi. 📬",
+                    "✅ *Pengumuman berhasil dikirim!*\n" . str_repeat('─', 24) . "\n_Siswa di kelas {$state['kelas']} sudah menerima notifikasi. 📬_",
                     mainKeyboard($role)
                 );
             } else {
@@ -1033,7 +1069,9 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             ]));
             sendMsgRemoveKeyboard(
                 $chatId,
-                "🔑 *Ganti Password*\n\nMasukkan *password baru* (minimal 6 karakter):"
+                "🔑 *Ganti Password*\n"
+                . str_repeat('─', 24) . "\n"
+                . "_Masukkan password baru (minimal 6 karakter):_"
             );
             return true;
         }
@@ -1052,12 +1090,15 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
             sendMsgRemoveKeyboard(
                 $chatId,
-                "🕐 *Atur Jam Notifikasi*\n\n"
-                . "Saat ini:\n"
-                . ($role === 'guru' ? "📅 Jadwal : *{$jamNow['jam_jadwal']}*\n\n" : (
+                "🕐 *Atur Jam Notifikasi*\n"
+                . str_repeat('─', 24) . "\n"
+                . "ℹ️ *Saat ini\n*"
+                . str_repeat('─', 16) . "\n"
+                . ($role === 'guru' ? "📅 Jadwal : *{$jamNow['jam_jadwal']}*\n" : (
                     "📅 Jadwal : *{$jamNow['jam_jadwal']}*\n"
-                    . "📝 Tugas  : *{$jamNow['jam_tugas']}*\n\n"
+                    . "📝 Tugas  : *{$jamNow['jam_tugas']}*\n"
                 ))
+                . str_repeat('─', 16) . "\n"
                 . $instruksi
             );
 
@@ -1083,7 +1124,8 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
 
         sendMsg(
             $chatId,
-            "Password baru: `{$text}`\n\nYakin ingin menyimpan password ini?",
+            "ℹ️ Password baru: `{$text}`\n"
+            . str_repeat('─', 24) . "\n_Yakin ingin menyimpan password ini?_",
             [['✅ Ya, Simpan', '❌ Batal']]
         );
 
@@ -1108,7 +1150,8 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             if ($ok) {
                 sendMsg(
                     $chatId,
-                    "✅ *Password berhasil diubah!*\n\nGunakan password baru Anda saat login berikutnya.",
+                    "✅ *Password berhasil diubah!*\n"
+                    . str_repeat('─', 24) . "\nGunakan password baru Anda saat login berikutnya.",
                     mainKeyboard($role)
                 );
             } else {
@@ -1148,10 +1191,14 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             $jamTugas  = $parts[1];
         }
 
-        $pesan = "⏰ *Konfirmasi Jam Notifikasi*\n\n"
+        $pesan = "⏰ *Konfirmasi Jam Notifikasi*\n"
+               . str_repeat('─', 24) . "\n"
+               . "ℹ️ *Anda akan menerima notifikasi setiap hari pada jam berikut*\n"
+               . str_repeat('─', 16) . "\n"
                . "📅 Jadwal : *{$jamJadwal}*\n"
-               . ($role !== 'guru' ? "📝 Tugas  : *{$jamTugas}*\n" : '')
-               . "\nSimpan pengaturan ini?";
+               . ($role !== 'guru' ? "📝 Tugas  : *{$jamTugas}*\n\n" : '')
+                . str_repeat('─', 24)
+               . "\n_Simpan pengaturan ini?_";
 
         setState($chatId, array_merge($state, [
             'step'        => 'pengaturan_konfirmasi_jam',
@@ -1180,7 +1227,8 @@ function handleState(string $step, string $text, int $chatId, array $state, ?arr
             _resetKeMenu($chatId, $user);
 
             if ($ok) {
-                $pesanOk = "✅ *Jam Notifikasi Diperbarui!*\n\n"
+                $pesanOk = "✅ *Jam Notifikasi Diperbarui!*\n"
+                         . str_repeat('─', 24) . "\n"
                          . "📅 Jadwal : {$state['jam_jadwal']}\n"
                          . ($role !== 'guru' ? "📝 Tugas  : {$state['jam_tugas']}\n" : '');
                 sendMsg($chatId, $pesanOk, mainKeyboard($role));

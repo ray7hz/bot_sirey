@@ -56,17 +56,17 @@ function handleMenu(string $text, int $chatId, array $user): bool
             foreach ($jadwal as $j) {
                 $mulai   = substr((string) $j['jam_mulai'],   0, 5);
                 $selesai = substr((string) $j['jam_selesai'], 0, 5);
-                $pesan  .= "  🕐 {$mulai}–{$selesai}\n  📚{$j['matpel']}";
+                $pesan  .= "  🕐 {$mulai}–{$selesai}\n  📚 {$j['matpel']}";
 
                 if ($role === 'siswa' && !empty($j['guru_nama'])) {
                     $pesan .= "\n  🧑‍🏫{$j['guru_nama']}";
                 }
 
-                $pesan .= "\n" . str_repeat('─', 16) . "\n";
-
                 if ($role === 'guru' && !empty($j['nama_grup'])) {
-                    $pesan .= " | 🎓 {$j['nama_grup']}";
+                    $pesan .= "\n  🎓 {$j['nama_grup']}";
                 }
+
+                $pesan .= "\n" . str_repeat('─', 16) . "\n";
 
             }
 
@@ -99,7 +99,7 @@ function handleMenu(string $text, int $chatId, array $user): bool
                 };
 
                 $pesan .= "{$prioIcon} *{$p['judul']}* |\n";
-                $pesan .= "ℹ️ " . potongTeks((string) $p['isi'], 200) . "\n";
+                $pesan .= "   ℹ️ " . potongTeks((string) $p['isi'], 200) . "\n";
                 $pesan .= "_— {$p['pembuat']}, {$tgl}_\n\n";
             }
         }
@@ -145,7 +145,7 @@ function handleMenu(string $text, int $chatId, array $user): bool
 
         sendMsg(
             $chatId,
-            "✏️ *Buat Tugas Baru*\n\nPilih *mata pelajaran* untuk tugas ini:",
+            "✏️ *Buat Tugas Baru*\n" . str_repeat('─', 24) . "\nPilih *mata pelajaran* untuk tugas ini:",
             $keyboard
         );
         return true;
@@ -178,7 +178,7 @@ function handleMenu(string $text, int $chatId, array $user): bool
 
         sendMsg(
             $chatId,
-            "📢 *Kirim Pengumuman*\n\nPilih *kelas* yang akan menerima pengumuman:",
+            "📢 *Kirim Pengumuman*\n". str_repeat('─', 24) . "\n_Pilih kelas yang akan menerima pengumuman:_",
             $keyboard
         );
         return true;
@@ -188,7 +188,7 @@ function handleMenu(string $text, int $chatId, array $user): bool
     if ($text === '🎓 Kelas Saya' && $role === 'guru') {
         $kelasList = getKelasWaliKelas($uid);
         $pesan     = "🎓 *Kelas yang Anda Walikan*\n";
-        $pesan    .= str_repeat('─', 24) . "\n\n";
+        $pesan    .= str_repeat('─', 24) . "\n";
 
         if (empty($kelasList)) {
             $pesan .= "_(Anda belum menjadi wali kelas)_";
@@ -223,13 +223,17 @@ function handleMenu(string $text, int $chatId, array $user): bool
             return true;
         }
 
-        $pesan = "📋 *Analisis Tugas*\n\nPilih nomor tugas:\n\n";
+        $pesan = "📋 *Analisis Tugas*\n"
+                    . str_repeat('─', 24) . "\n"
+                    . "ℹ️ _Pilih nomor tugas:_\n\n";
 
         foreach ($tugasList as $idx => $t) {
             $no  = $idx + 1;
             $tgl = date('d/m', strtotime((string) $t['tenggat']));
             $pesan .= "*{$no}.* {$t['judul']}\n"
-                . "   📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n"
+                .  str_repeat('─', 16) . "\n"
+                . "   📚 {$t['matpel']}\n"
+                . "   🎓 {$t['nama_grup']}\n"
                 . "   📅 Deadline: {$tgl}\n\n";
         }
 
@@ -262,7 +266,9 @@ function handleMenu(string $text, int $chatId, array $user): bool
             return true;
         }
 
-        $pesan = "⭐ *Nilai Tugas*\n\nPilih tugas yang akan dinilai:\n\n";
+        $pesan = "⭐ *Nilai Tugas*\n"
+                    . str_repeat('─', 24) . "\n"
+                    . "ℹ️ _Pilih tugas yang akan dinilai:_\n\n";
 
         foreach ($tugasList as $idx => $t) {
             $no           = $idx + 1;
@@ -271,7 +277,8 @@ function handleMenu(string $text, int $chatId, array $user): bool
             $bar          = progressBar((int) $t['jml_sudah_dinilai'], (int) $t['jml_pengumpulan']);
 
             $pesan .= "{$emoji} *{$no}.* {$t['judul']}\n"
-                . "   📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n"
+                . "   📚 {$t['matpel']}\n"
+                . "   🎓 {$t['nama_grup']}\n"
                 . "   📊 {$bar} ({$t['jml_sudah_dinilai']}/{$t['jml_pengumpulan']})\n\n";
         }
 
@@ -317,9 +324,10 @@ function handleMenu(string $text, int $chatId, array $user): bool
             foreach ($tugasRevisi as $t) {
                 $no++;
                 $sisa  = sisaWaktu((string) $t['tenggat']);
-                $pesan .= "*{$no}.* ⚠️ {$t['judul']} *(REVISI)*\n"
-                    . "   📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n"
-                    . "   ⏳ {$sisa}";
+                $pesan .= "*{$no}. {$t['judul']} (⚠️REVISI)*\n"
+                    . "    📚 {$t['matpel']}\n"
+                    . "    🎓 {$t['nama_grup']}\n"
+                    . "    ⏳ {$sisa}";
 
                 if (!empty($t['catatan_guru'])) {
                     $pesan .= "\n   💬 _{$t['catatan_guru']}_";
@@ -341,14 +349,17 @@ function handleMenu(string $text, int $chatId, array $user): bool
             foreach ($tugasBaru as $t) {
                 $no++;
                 $sisa  = sisaWaktu((string) $t['tenggat']);
-                $pesan .= "*{$no}.* {$t['judul']}\n"
-                    . "   📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n"
-                    . "   ⏳ {$sisa}\n\n";
+                $pesan .= "*{$no}. {$t['judul']}*\n"
+                    . "    📚 {$t['matpel']}\n"
+                    . "    🎓 {$t['nama_grup']}\n"
+                    . "    ⏳ {$sisa}\n\n";
                 $t['tipe']    = 'baru';
                 $daftarGabung[] = $t;
             }
         }
 
+        $pesan .= str_repeat('─', 24) . "\n";
+        $pesan .= "_Ketik nomor tugas untuk mengumpulkan (contoh: 1)_";
         $keyboard = _buildNomorKeyboard(count($daftarGabung));
         $keyboard[] = ['🔙 Kembali ke Menu'];
 
@@ -376,12 +387,15 @@ function handleMenu(string $text, int $chatId, array $user): bool
     if ($text === '⚙️ Pengaturan') {
         $jamNotif = getJamNotifikasi($uid);
 
-        $pesan = "⚙️ *Pengaturan*\n\n"
-            . "Jam notifikasi saat ini:\n"
+        $pesan = "⚙️ *Pengaturan*\n"
+            . str_repeat('─', 24) . "\n"
+            . "ℹ️ *Jam notifikasi saat ini*\n"
+            . str_repeat('─', 16) . "\n"
             . ($role === 'guru' ? "📅 Jadwal : *{$jamNotif['jam_jadwal']}*\n\n" :
                 "📅 Jadwal : *{$jamNotif['jam_jadwal']}*\n"
                 .   "📝 Tugas  : *{$jamNotif['jam_tugas']}*\n\n")
-            . "Pilih pengaturan yang ingin diubah:";
+            . str_repeat('─', 24) . "\n"
+            . "_Pilih pengaturan yang ingin diubah:_";
 
         setState($chatId, [
             'step'        => 'pengaturan_pilih_menu',
@@ -410,8 +424,10 @@ function handleMenu(string $text, int $chatId, array $user): bool
         setState($chatId, null);
         sendMsgRemoveKeyboard(
             $chatId,
-            "✅ Anda berhasil *logout*.\n\n"
-                . "Terima kasih telah menggunakan SKADACI BOT! 👋\n\n"
+            "✅ Anda berhasil *logout*.\n"
+                . str_repeat('─', 24) . "\n"
+                . "Terima kasih telah menggunakan SKADACI BOT! 👋\n"
+                . str_repeat('─', 24) . "\n"
                 . "Ketik /start untuk login kembali."
         );
         return true;
@@ -443,7 +459,9 @@ function _menuTugasGuru(int $chatId, int $uid, string $role): void
             $kumpul = (int) $t['jml_kumpul'];
 
             $pesan .= "📌 *{$t['judul']}*\n"
-                . "   📚 {$t['matpel']} | 🎓 {$t['nama_grup']}\n"
+                . str_repeat('─', 16) . "\n"
+                . "   📚 {$t['matpel']}\n"
+                . "   🎓 {$t['nama_grup']}\n"
                 . "   📅 {$tgl} _({$sisa})_\n"
                 . "   📬 {$kumpul} sudah mengumpulkan\n\n";
         }
@@ -473,6 +491,7 @@ function _menuTugasSiswa(int $chatId, int $uid, string $role): void
             $statusText = (int) $t['sudah_kumpul'] > 0 ? 'Sudah' : 'Belum';
 
             $pesan .= "*{$no}. {$t['judul']}*\n"
+                . str_repeat('─', 16) . "\n"
                 . "   📚 {$t['matpel']}\n"
                 . "   🎓 {$t['nama_grup']}\n"
                 . "   📅 {$tgl}\n   _({$sisa})_\n"

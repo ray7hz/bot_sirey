@@ -73,8 +73,8 @@ if ($callId !== null) {
 // ----------------------------------------------------------------
 // 4. Load state percakapan dan data user
 // ----------------------------------------------------------------
-$state = getState($chatId) ?? ['step' => 'init'];
-$step  = (string) ($state['step'] ?? 'init');
+$state = getState($chatId) ?? ['step' => 'waiting_start'];
+$step  = (string) ($state['step'] ?? 'waiting_start');
 $user  = null;
 
 if (!empty($state['user_cache']) && is_array($state['user_cache']) && !empty($state['session_token'])) {
@@ -86,12 +86,14 @@ if (!empty($state['user_cache']) && is_array($state['user_cache']) && !empty($st
         $user = array_merge($userDb, $state['user_cache']);
     } else {
         // Session tidak valid (mungkin login di tempat lain)
-        if (!in_array($step, ['ask_nis', 'ask_password'], true)) {
-            setState($chatId, ['step' => 'ask_nis']);
+        if (!in_array($step, ['ask_nis', 'ask_password', 'waiting_start'], true)) {
+            setState($chatId, ['step' => 'waiting_start']);
             sendMsgRemoveKeyboard(
                 $chatId,
-                "⚠️ Sesi Anda sudah berakhir karena akun ini login di perangkat lain.\n\n"
-                . "Silakan login kembali. Masukkan *NIS/NIP* Anda:"
+                "⚠️ Sesi Anda sudah berakhir\n"
+                . "Akun ini login di perangkat lain.\n"
+                . str_repeat('─', 24) . "\n"
+                . "Ketik `/start` untuk login kembali."
             );
             exit;
         }
@@ -160,11 +162,13 @@ if ($step === 'kumpul_input_file' && $user !== null) {
         ]);
 
         $tugas = $state['tugas'] ?? [];
-        $pesan = "✅ *Konfirmasi Pengumpulan File*\n\n"
+        $pesan = "✅ *Konfirmasi Pengumpulan File*\n"
+                . str_repeat('─', 24) . "\n"
                . "📝 Tugas: *{$tugas['judul']}*\n"
                . "📎 File: {$fileName}\n"
-               . "⏰ " . date('d/m/Y H:i') . "\n\n"
-               . "Kirim file ini sebagai jawaban?";
+               . "⏰ " . date('d/m/Y H:i') . "\n"
+                . str_repeat('─', 24) . "\n"
+               . "_Kirim file ini sebagai jawaban?_";
 
         sendMsg($chatId, $pesan, [['✅ Kirim', '❌ Batal']]);
         exit;
@@ -201,18 +205,33 @@ if ($user !== null && handleMenu($text, $chatId, $user)) {
 // 7. Fallback: belum login atau pesan tidak dikenali
 // ----------------------------------------------------------------
 if ($user === null) {
-    setState($chatId, ['step' => 'ask_nis']);
-    sendMsgRemoveKeyboard(
-        $chatId,
-        "👋 Selamat datang di *SKADACI BOT*!\n\n"
-        . "Silakan login untuk menggunakan bot ini.\n\n"
-        . "Masukkan *NIS/NIP* Anda:"
-    );
+    // Belum login: cek apakah sudah /start atau belum
+    if ($step === 'waiting_start') {
+        // Belum /start → minta /start terlebih dahulu
+        sendMsgRemoveKeyboard(
+            $chatId,
+            "ℹ️ _Bot resmi manajemen tugas & jadwal sekolah_\n"
+            . str_repeat('─', 24) . "\n"
+            . "⚠️ Silakan ketik *`/start`* terlebih dahulu untuk memulai.\n\n"
+        );
+    } else {
+        // Sudah /start tapi login belum selesai → lanjut input NIS
+        setState($chatId, ['step' => 'ask_nis']);
+        sendMsgRemoveKeyboard(
+            $chatId,
+            "👋 Selamat datang di *SKADACI BOT*!\n"
+            . str_repeat('─', 24) . "\n"
+            . "ℹ️ _Bot resmi manajemen tugas & jadwal sekolah_\n"
+            . str_repeat('─', 24) . "\n"
+            . "Silakan login untuk melanjutkan.\n"
+            . "Masukkan *NIS/NIP* Anda:"
+        );
+    }
 } else {
     // User sudah login tapi pesan tidak dikenali
     sendMsg(
         $chatId,
-        "❓ Perintah tidak dikenali.\n\nGunakan tombol menu di bawah untuk navigasi.",
+        "❓ Perintah tidak dikenali.\n" .str_repeat('─', 24) . "\n" . "Gunakan tombol menu di bawah untuk navigasi.",
         mainKeyboard((string) $user['role'])
     );
 }
